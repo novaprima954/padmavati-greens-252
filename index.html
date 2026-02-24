@@ -7,6 +7,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+  <!-- Auth guard: runs instantly before body renders -->
+  <script>
+    (function(){
+      try {
+        var s = JSON.parse(localStorage.getItem('pg_session'));
+        if (!s || !s.token) { window.location.replace('login.html'); }
+      } catch(e) { window.location.replace('login.html'); }
+    })();
+  </script>
 </head>
 <body>
 
@@ -20,7 +29,7 @@
     <div class="stat-card s-avail"><div class="stat-n" id="s-avail">—</div><div class="stat-l">Available</div></div>
     <div class="stat-card s-booked"><div class="stat-n" id="s-booked">—</div><div class="stat-l">Booked</div></div>
     <div class="stat-card s-res"><div class="stat-n" id="s-res">—</div><div class="stat-l">Reserved</div></div>
-    <div class="stat-card s-rev"><div class="stat-n" id="s-rev">—</div><div class="stat-l">Token Revenue</div></div>
+    <div class="stat-card s-rev" id="revenueCard"><div class="stat-n" id="s-rev">—</div><div class="stat-l">Token Revenue</div></div>
   </div>
 
   <!-- Quick Actions -->

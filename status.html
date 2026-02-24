@@ -7,6 +7,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+  <!-- Auth guard: runs instantly before body renders -->
+  <script>
+    (function(){
+      try {
+        var s = JSON.parse(localStorage.getItem('pg_session'));
+        if (!s || !s.token) { window.location.replace('login.html'); }
+      } catch(e) { window.location.replace('login.html'); }
+    })();
+  </script>
 </head>
 <body>
 
@@ -15,15 +24,21 @@
   <div class="page-sub">Enter a receipt number to view booking details</div>
 
   <div class="lookup-wrap">
+    <select id="searchType" class="select-filter" style="flex-shrink:0;min-width:160px;">
+      <option value="receipt">Receipt No.</option>
+      <option value="name">Customer Name</option>
+      <option value="phone">Mobile Number</option>
+    </select>
     <input type="text" id="receiptInput" placeholder="e.g. PG-2025-123456">
     <button class="btn-lookup" id="lookupBtn">Search</button>
   </div>
 
+  <div id="multiResults" class="multi-results" style="display:none;"></div>
   <div id="receiptCard" class="receipt-card"></div>
 
   <div class="empty-state" id="statusHint">
     <div class="empty-icon">🔍</div>
-    <p>Enter a receipt number above to view booking details</p>
+    <p>Search by receipt number, customer name, or mobile number</p>
   </div>
 </div>
 

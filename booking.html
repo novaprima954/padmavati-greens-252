@@ -7,6 +7,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+  <!-- Auth guard: runs instantly before body renders -->
+  <script>
+    (function(){
+      try {
+        var s = JSON.parse(localStorage.getItem('pg_session'));
+        if (!s || !s.token) { window.location.replace('login.html'); }
+      } catch(e) { window.location.replace('login.html'); }
+    })();
+  </script>
 </head>
 <body>
 
@@ -21,9 +30,32 @@
       <!-- Plot picker -->
       <div class="card" style="margin-bottom:18px;">
         <div class="card-title">Select a Plot</div>
-        <div class="card-sub">Tap any green (available) plot to select it</div>
-        <div id="bplotGrid" class="bplot-grid">
-          <div class="loading-block"><div class="spinner"></div></div>
+
+        <div class="picker-tabs">
+          <button class="picker-tab active" data-view="grid">☰ Grid View</button>
+          <button class="picker-tab" data-view="map">🗺 Map View</button>
+        </div>
+
+        <!-- Grid -->
+        <div id="pickerGrid" class="picker-panel">
+          <div style="font-size:.8rem;color:var(--grey);margin:10px 0 8px;">Tap any green plot to select</div>
+          <div id="bplotGrid" class="bplot-grid">
+            <div class="loading-block"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- Map -->
+        <div id="pickerMap" class="picker-panel" style="display:none;">
+          <div style="font-size:.8rem;color:var(--grey);margin:10px 0 8px;">Tap a green plot on the map · Scroll/pinch to zoom</div>
+          <div class="map-legend">
+            <span class="ml ml-av">■ Available</span>
+            <span class="ml ml-bk">■ Booked</span>
+            <span class="ml ml-rs">■ Reserved</span>
+            <span class="ml ml-sel">■ Selected</span>
+          </div>
+          <div class="map-viewport" id="mapViewport">
+            <svg id="layoutSvg" class="layout-svg" viewBox="0 0 1100 1380" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
         </div>
       </div>
 
@@ -127,7 +159,7 @@
     <div id="successReceiptNo" class="success-receipt"></div>
     <div id="successDetails" class="success-details"></div>
     <div class="btn-row">
-      <button class="btn-sec" onclick="window.print()">🖨 Print</button>
+      <button class="btn-sec" id="waShareBtn">📲 Share on WhatsApp</button>
       <button class="btn-prim" data-close="successModal">Done</button>
     </div>
   </div>

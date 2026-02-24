@@ -693,3 +693,93 @@ header {
   .page-wrap { padding: 0; }
   .receipt-card { box-shadow: none; max-width: 100%; display: block !important; }
 }
+
+/* ════════════════════════════════════════════════
+   BOOKING PAGE — Picker tabs + Map view
+════════════════════════════════════════════════ */
+.picker-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 14px 0 0;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
+}
+.picker-tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: .84rem;
+  font-weight: 500;
+  color: var(--grey);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all .18s;
+}
+.picker-tab:hover  { color: var(--forest); }
+.picker-tab.active { color: var(--forest); border-bottom-color: var(--forest); font-weight: 600; }
+
+.picker-panel { margin-top: 4px; }
+
+/* Map legend */
+.map-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: .75rem;
+}
+.ml { display: flex; align-items: center; gap: 4px; font-weight: 500; }
+.ml-av  { color: #2e7d32; }
+.ml-bk  { color: var(--red); }
+.ml-rs  { color: var(--amber); }
+.ml-sel { color: var(--forest); }
+
+/* Map viewport - scrollable container */
+.map-viewport {
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  overflow: auto;
+  background: var(--mist);
+  max-height: 380px;
+  cursor: grab;
+}
+.map-viewport:active { cursor: grabbing; }
+.layout-svg {
+  display: block;
+  min-width: 600px;
+  height: auto;
+}
+
+/* ════════════════════════════════════════════════
+   STATUS PAGE — Multi-search results
+════════════════════════════════════════════════ */
+.multi-results {
+  max-width: 620px;
+  margin: 0 auto 20px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+}
+.multi-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .15s;
+  margin-bottom: 6px;
+  border: 1.5px solid var(--border);
+}
+.multi-result-item:last-child { margin-bottom: 0; }
+.multi-result-item:hover { background: var(--leaf-l); border-color: var(--leaf); }
+.mri-name    { font-size: .9rem; font-weight: 600; color: var(--ink); }
+.mri-sub     { font-size: .75rem; color: var(--grey); margin-top: 2px; }
+.mri-receipt { font-size: .78rem; color: var(--forest); font-weight: 600; margin-bottom: 4px; text-align: right; }
+.mri-right   { text-align: right; }
+.lookup-wrap { gap: 8px; }
