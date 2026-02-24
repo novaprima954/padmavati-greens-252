@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book a Plot – Padmavati Greens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="page-title">Book a Plot</div>
+  <div class="page-sub">Select an available plot, fill in customer details and confirm</div>
+
+  <div class="booking-layout">
+
+    <!-- Left column -->
+    <div>
+      <!-- Plot picker -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">Select a Plot</div>
+        <div class="card-sub">Tap any green (available) plot to select it</div>
+        <div id="bplotGrid" class="bplot-grid">
+          <div class="loading-block"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- Customer form -->
+      <div class="card">
+        <div class="card-title">Customer Details</div>
+        <div class="card-sub">Fields marked <span style="color:var(--red)">*</span> are required</div>
+        <form id="bookingForm">
+
+          <div class="form-row">
+            <div class="fg">
+              <label>Full Name <span class="req">*</span></label>
+              <input type="text" id="f-name" required placeholder="As per Aadhaar">
+            </div>
+            <div class="fg">
+              <label>Phone Number <span class="req">*</span></label>
+              <input type="tel" id="f-phone" required placeholder="10-digit mobile">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="fg">
+              <label>Aadhaar Number</label>
+              <input type="text" id="f-aadhaar" placeholder="XXXX XXXX XXXX" maxlength="14">
+            </div>
+            <div class="fg">
+              <label>PAN Number</label>
+              <input type="text" id="f-pan" placeholder="ABCDE1234F" maxlength="10">
+            </div>
+          </div>
+
+          <div class="fg">
+            <label>Address</label>
+            <textarea id="f-address" placeholder="Full postal address"></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="fg">
+              <label>Receipt Number 1 <span class="hint">(physical receipt)</span></label>
+              <input type="text" id="f-receipt1" placeholder="Manual receipt no.">
+            </div>
+            <div class="fg">
+              <label>Token Amount (₹) <span class="req">*</span></label>
+              <input type="number" id="f-token" required placeholder="e.g. 50000" min="1">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="fg">
+              <label>Payment Mode <span class="req">*</span></label>
+              <select id="f-paymode" required>
+                <option value="">Select…</option>
+                <option>Cash</option>
+                <option>NEFT / RTGS</option>
+                <option>UPI</option>
+                <option>Cheque</option>
+                <option>DD</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Payment Reference</label>
+              <input type="text" id="f-payref" placeholder="UTR / cheque no / UPI ref">
+            </div>
+          </div>
+
+          <div class="fg">
+            <label>Referred By</label>
+            <input type="text" id="f-refby" placeholder="Name of referrer (optional)">
+          </div>
+
+          <div class="fg">
+            <label>Remarks</label>
+            <textarea id="f-remarks" placeholder="Any additional notes…"></textarea>
+          </div>
+
+          <button type="submit" class="btn-submit" id="submitBtn" disabled>
+            📋 Confirm Booking
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="booking-sidebar">
+      <div class="plot-summary">
+        <div class="ps-title">Selected Plot</div>
+        <div id="psSummary">
+          <div class="ps-empty">No plot selected.<br>Choose from the grid above.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div class="overlay" id="successModal">
+  <div class="modal modal-success">
+    <div class="success-icon">✅</div>
+    <h3>Booking Confirmed!</h3>
+    <div id="successReceiptNo" class="success-receipt"></div>
+    <div id="successDetails" class="success-details"></div>
+    <div class="btn-row">
+      <button class="btn-sec" onclick="window.print()">🖨 Print</button>
+      <button class="btn-prim" data-close="successModal">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/header.js"></script>
+<script src="js/app/booking.js"></script>
+</body>
+</html>

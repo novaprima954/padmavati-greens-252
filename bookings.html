@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Bookings – Padmavati Greens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="page-title">All Bookings</div>
+  <div class="page-sub" id="bookingsSubtitle">Loading…</div>
+
+  <div class="tbl-toolbar">
+    <div class="tbl-search">
+      <span class="tbl-icon">🔍</span>
+      <input type="text" id="bSearch" placeholder="Search receipt, plot, name…">
+    </div>
+    <select class="select-filter" id="bStatusFilter">
+      <option value="">All Status</option>
+      <option value="Active">Active</option>
+      <option value="Cancelled">Cancelled</option>
+    </select>
+    <span id="bCount" class="result-count"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead id="bookingsThead"></thead>
+      <tbody id="bookingsTbody">
+        <tr><td colspan="10"><div class="loading-block"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/header.js"></script>
+<script src="js/app/bookings.js"></script>
+</body>
+</html>

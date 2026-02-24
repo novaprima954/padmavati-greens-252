@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Check Status – Padmavati Greens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="page-title">Check Booking Status</div>
+  <div class="page-sub">Enter a receipt number to view booking details</div>
+
+  <div class="lookup-wrap">
+    <input type="text" id="receiptInput" placeholder="e.g. PG-2025-123456">
+    <button class="btn-lookup" id="lookupBtn">Search</button>
+  </div>
+
+  <div id="receiptCard" class="receipt-card"></div>
+
+  <div class="empty-state" id="statusHint">
+    <div class="empty-icon">🔍</div>
+    <p>Enter a receipt number above to view booking details</p>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/header.js"></script>
+<script src="js/app/status.js"></script>
+</body>
+</html>

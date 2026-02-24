@@ -3,286 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Padmavati Greens – Plot Booking</title>
+<title>Dashboard – Padmavati Greens</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<!-- ══════════════════════════════════════
-     LOGIN SCREEN
-══════════════════════════════════════ -->
-<div id="loginScreen">
-  <div class="login-box">
-    <div class="login-logo">🌿</div>
-    <h1>Padmavati Greens</h1>
-    <p class="login-sub">Plot Booking System</p>
-    <div class="login-field">
-      <label>Username</label>
-      <input type="text" id="loginUser" placeholder="Enter username" autocomplete="username">
-    </div>
-    <div class="login-field">
-      <label>Password</label>
-      <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
-    </div>
-    <button class="btn-login" id="loginBtn">Login</button>
-    <div id="loginError"></div>
+<div class="page-wrap">
+  <div class="page-title">Dashboard</div>
+  <div class="page-sub">Welcome back — here's a summary of Padmavati Greens</div>
+
+  <!-- Stats -->
+  <div class="stats-strip">
+    <div class="stat-card"><div class="stat-n" id="s-total">—</div><div class="stat-l">Total Plots</div></div>
+    <div class="stat-card s-avail"><div class="stat-n" id="s-avail">—</div><div class="stat-l">Available</div></div>
+    <div class="stat-card s-booked"><div class="stat-n" id="s-booked">—</div><div class="stat-l">Booked</div></div>
+    <div class="stat-card s-res"><div class="stat-n" id="s-res">—</div><div class="stat-l">Reserved</div></div>
+    <div class="stat-card s-rev"><div class="stat-n" id="s-rev">—</div><div class="stat-l">Token Revenue</div></div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="section-title">Quick Actions</div>
+  <div class="quick-grid">
+    <a href="plots.html" class="quick-card">
+      <div class="quick-card-icon">📍</div>
+      <div class="quick-card-title">View Plots</div>
+      <div class="quick-card-desc">Browse all plots, filter by status, zone or corner</div>
+      <div class="quick-card-arrow">View all plots →</div>
+    </a>
+    <a href="booking.html" class="quick-card">
+      <div class="quick-card-icon">📝</div>
+      <div class="quick-card-title">Book a Plot</div>
+      <div class="quick-card-desc">Select an available plot and record a booking</div>
+      <div class="quick-card-arrow">Start booking →</div>
+    </a>
+    <a href="status.html" class="quick-card">
+      <div class="quick-card-icon">🔍</div>
+      <div class="quick-card-title">Check Status</div>
+      <div class="quick-card-desc">Look up a booking by receipt number</div>
+      <div class="quick-card-arrow">Search receipt →</div>
+    </a>
+    <a href="bookings.html" class="quick-card">
+      <div class="quick-card-icon">📋</div>
+      <div class="quick-card-title">All Bookings</div>
+      <div class="quick-card-desc">View and manage all recorded bookings</div>
+      <div class="quick-card-arrow">View bookings →</div>
+    </a>
+  </div>
+
+  <!-- Recent Bookings -->
+  <div class="section-title">
+    Recent Bookings
+    <a href="bookings.html" class="section-link">View all →</a>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Receipt No</th>
+          <th>Date</th>
+          <th>Plot No</th>
+          <th>Token Amount</th>
+          <th>Payment Mode</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="recentBody">
+        <tr><td colspan="6"><div class="loading-block"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     APP SHELL
-══════════════════════════════════════ -->
-<div id="appShell">
-
-  <!-- Header -->
-  <header>
-    <div class="header-inner">
-      <div class="brand">
-        <div class="brand-icon">🌿</div>
-        <div>
-          <div class="brand-name">Padmavati Greens</div>
-          <div class="brand-sub">Layout No. 712 · Survey No. 274 · Yavatmal</div>
-        </div>
-      </div>
-      <nav id="mainNav">
-        <button class="nav-btn active" data-tab="plots">📍 Plots</button>
-        <button class="nav-btn" data-tab="booking">📝 Book</button>
-        <button class="nav-btn" data-tab="status">🔍 Status</button>
-        <button class="nav-btn" data-tab="bookings">📋 Bookings</button>
-      </nav>
-      <div class="user-pill" id="userPill">
-        <div class="user-avatar" id="userAvatar">?</div>
-        <div class="user-info">
-          <div class="user-name" id="userName">—</div>
-          <div class="user-role" id="userRole">—</div>
-        </div>
-        <span class="logout-hint">Logout</span>
-      </div>
-    </div>
-  </header>
-
-  <!-- Stats Bar -->
-  <div class="stats-bar">
-    <div class="stats-inner">
-      <div class="stat">
-        <div class="stat-n" id="s-total">—</div>
-        <div class="stat-l">Total Plots</div>
-      </div>
-      <div class="stat s-avail">
-        <div class="stat-n" id="s-avail">—</div>
-        <div class="stat-l">Available</div>
-      </div>
-      <div class="stat s-booked">
-        <div class="stat-n" id="s-booked">—</div>
-        <div class="stat-l">Booked</div>
-      </div>
-      <div class="stat s-res">
-        <div class="stat-n" id="s-res">—</div>
-        <div class="stat-l">Reserved</div>
-      </div>
-      <div class="stat s-rev">
-        <div class="stat-n" id="s-rev">—</div>
-        <div class="stat-l">Token Revenue</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Main Content -->
-  <main>
-
-    <!-- ── PLOTS TAB ── -->
-    <div id="tab-plots" class="tab-panel active">
-      <div class="toolbar">
-        <div class="search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="plotSearch" placeholder="Search plot no, zone…">
-        </div>
-        <div class="filter-chips">
-          <button class="chip c-all on"    data-filter="All">All</button>
-          <button class="chip c-avail"     data-filter="Available">Available</button>
-          <button class="chip c-booked"    data-filter="Booked">Booked</button>
-          <button class="chip c-res"       data-filter="Reserved">Reserved</button>
-          <button class="chip c-corner"    data-filter="Corner">★ Corner</button>
-        </div>
-        <select class="select-filter" id="zoneFilter">
-          <option value="">All Zones</option>
-        </select>
-        <span class="plot-count" id="plotCount"></span>
-      </div>
-      <div id="plotGrid" class="plot-grid">
-        <div class="loading-block" style="grid-column:1/-1;">
-          <div class="spinner"></div>Loading plots…
-        </div>
-      </div>
-    </div>
-
-    <!-- ── BOOKING TAB ── -->
-    <div id="tab-booking" class="tab-panel">
-      <div class="booking-layout">
-
-        <div class="booking-left">
-          <!-- Plot picker -->
-          <div class="card" id="plotPickerCard">
-            <div class="card-title">Select a Plot</div>
-            <div class="card-sub">Tap any green (available) plot to select for booking</div>
-            <div id="bplotGrid" class="bplot-grid">
-              <div class="loading-block"><div class="spinner"></div></div>
-            </div>
-          </div>
-
-          <!-- Customer form -->
-          <div class="card" style="margin-top:18px;">
-            <div class="card-title">Customer Details</div>
-            <div class="card-sub">Fields marked <span style="color:var(--red);">*</span> are required</div>
-            <form id="bookingForm">
-              <div class="form-row">
-                <div class="fg">
-                  <label>Full Name <span class="req">*</span></label>
-                  <input type="text" id="f-name" required placeholder="As per Aadhaar">
-                </div>
-                <div class="fg">
-                  <label>Phone Number <span class="req">*</span></label>
-                  <input type="tel" id="f-phone" required placeholder="10-digit mobile">
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="fg">
-                  <label>Aadhaar Number</label>
-                  <input type="text" id="f-aadhaar" placeholder="XXXX XXXX XXXX" maxlength="14">
-                </div>
-                <div class="fg">
-                  <label>PAN Number</label>
-                  <input type="text" id="f-pan" placeholder="ABCDE1234F" maxlength="10">
-                </div>
-              </div>
-              <div class="fg">
-                <label>Address</label>
-                <textarea id="f-address" placeholder="Full postal address"></textarea>
-              </div>
-              <div class="form-row">
-                <div class="fg">
-                  <label>Receipt Number 1 <span class="hint">(physical receipt)</span></label>
-                  <input type="text" id="f-receipt1" placeholder="Manual receipt no.">
-                </div>
-                <div class="fg">
-                  <label>Token Amount (₹) <span class="req">*</span></label>
-                  <input type="number" id="f-token" required placeholder="e.g. 50000" min="1">
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="fg">
-                  <label>Payment Mode <span class="req">*</span></label>
-                  <select id="f-paymode" required>
-                    <option value="">Select…</option>
-                    <option>Cash</option>
-                    <option>NEFT / RTGS</option>
-                    <option>UPI</option>
-                    <option>Cheque</option>
-                    <option>DD</option>
-                  </select>
-                </div>
-                <div class="fg">
-                  <label>Payment Reference</label>
-                  <input type="text" id="f-payref" placeholder="UTR / cheque no / UPI ref">
-                </div>
-              </div>
-              <div class="fg">
-                <label>Referred By</label>
-                <input type="text" id="f-refby" placeholder="Name of referrer (optional)">
-              </div>
-              <div class="fg">
-                <label>Remarks</label>
-                <textarea id="f-remarks" placeholder="Any additional notes…"></textarea>
-              </div>
-              <button type="submit" class="btn-submit" id="submitBtn" disabled>
-                📋 Confirm Booking
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Sidebar -->
-        <div class="booking-sidebar">
-          <div class="plot-summary" id="plotSummaryBox">
-            <div class="ps-title">Selected Plot</div>
-            <div id="psSummary">
-              <div class="ps-empty">No plot selected.<br>Choose from the grid above.</div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- ── STATUS TAB ── -->
-    <div id="tab-status" class="tab-panel">
-      <div class="lookup-wrap">
-        <input type="text" id="receiptInput" placeholder="Enter Receipt No (e.g. PG-2025-123456)">
-        <button class="btn-lookup" id="lookupBtn">Search</button>
-      </div>
-      <div id="receiptCard" class="receipt-card"></div>
-      <div class="empty-state" id="statusHint">
-        <div class="empty-icon">🔍</div>
-        <p>Enter a receipt number above to view booking details</p>
-      </div>
-    </div>
-
-    <!-- ── BOOKINGS TAB ── -->
-    <div id="tab-bookings" class="tab-panel">
-      <div class="tbl-toolbar">
-        <div class="tbl-search">
-          <span class="tbl-search-icon">🔍</span>
-          <input type="text" id="bSearch" placeholder="Search receipt, plot, name…">
-        </div>
-        <select class="select-filter" id="bStatusFilter">
-          <option value="">All Status</option>
-          <option value="Active">Active</option>
-          <option value="Cancelled">Cancelled</option>
-        </select>
-        <span id="bCount" class="plot-count"></span>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead id="bookingsThead"></thead>
-          <tbody id="bookingsTbody">
-            <tr><td colspan="10"><div class="loading-block"><div class="spinner"></div></div></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-  </main>
-</div><!-- /appShell -->
-
-<!-- Plot Detail Modal -->
-<div class="overlay" id="plotModal">
-  <div class="modal">
-    <button class="modal-close" data-close="plotModal">✕</button>
-    <h3 class="modal-title" id="plotModalTitle"></h3>
-    <div id="plotModalBody"></div>
-    <div id="plotModalActions"></div>
-  </div>
-</div>
-
-<!-- Booking Success Modal -->
-<div class="overlay" id="successModal">
-  <div class="modal modal-success">
-    <div class="success-icon">✅</div>
-    <h3>Booking Confirmed!</h3>
-    <div id="successReceiptNo" class="success-receipt"></div>
-    <div id="successDetails" class="success-details"></div>
-    <div class="btn-row">
-      <button class="btn-sec" id="printBtn">🖨 Print</button>
-      <button class="btn-prim" data-close="successModal">Done</button>
-    </div>
-  </div>
-</div>
-
-<!-- Toast -->
 <div id="toast"></div>
 
-<script src="js/app.js"></script>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/header.js"></script>
+<script src="js/app/dashboard.js"></script>
 </body>
 </html>

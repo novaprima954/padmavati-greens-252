@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plots – Padmavati Greens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="page-title">All Plots</div>
+  <div class="page-sub">Layout No. 712 · 252 plots · Click any plot to view details</div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="plotSearch" placeholder="Search plot no, zone…">
+    </div>
+    <div class="filter-chips">
+      <button class="chip c-all on"    data-filter="All">All</button>
+      <button class="chip c-avail"     data-filter="Available">Available</button>
+      <button class="chip c-booked"    data-filter="Booked">Booked</button>
+      <button class="chip c-res"       data-filter="Reserved">Reserved</button>
+      <button class="chip c-corner"    data-filter="Corner">★ Corner</button>
+    </div>
+    <select class="select-filter" id="zoneFilter">
+      <option value="">All Zones</option>
+    </select>
+    <span class="result-count" id="plotCount"></span>
+  </div>
+
+  <div id="plotGrid" class="plot-grid">
+    <div class="loading-block" style="grid-column:1/-1"><div class="spinner"></div>Loading plots…</div>
+  </div>
+</div>
+
+<!-- Plot Detail Modal -->
+<div class="overlay" id="plotModal">
+  <div class="modal">
+    <button class="modal-close" data-close="plotModal">✕</button>
+    <h3 class="modal-title" id="plotModalTitle"></h3>
+    <div id="plotModalBody"></div>
+    <div id="plotModalActions"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/header.js"></script>
+<script src="js/app/plots.js"></script>
+</body>
+</html>
