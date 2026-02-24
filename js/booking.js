@@ -1,4 +1,7 @@
 // js/app/booking.js
+// Auth check runs immediately — before DOMContentLoaded
+Auth.requireAuth();
+
 let allPlots  = [];
 let selPlotNo = null;
 

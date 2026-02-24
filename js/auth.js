@@ -18,20 +18,30 @@ const Auth = (() => {
     localStorage.removeItem(KEY);
   }
 
-  // Call on every protected page — redirects to login if no session
+  // Call on every protected page.
+  // Hides the body immediately — shows it only if session is valid.
+  // This prevents any flash of page content before redirect to login.
   function requireAuth() {
+    // Hide body instantly before any render
+    document.documentElement.style.visibility = 'hidden';
+
     const s = getSession();
     if (!s || !s.token) {
-      window.location.href = 'login.html';
+      window.location.replace('login.html');
       return null;
     }
+
+    // Session valid — show page
+    document.documentElement.style.visibility = '';
     return s;
   }
 
-  // Call on login page — redirects to index if already logged in
+  // Call on login.html — redirects away if already logged in
   function redirectIfLoggedIn() {
     const s = getSession();
-    if (s && s.token) window.location.href = 'index.html';
+    if (s && s.token) {
+      window.location.replace('index.html');
+    }
   }
 
   async function login(username, password) {
@@ -43,7 +53,7 @@ const Auth = (() => {
 
   function logout() {
     clearSession();
-    window.location.href = 'login.html';
+    window.location.replace('login.html');
   }
 
   return { getSession, saveSession, clearSession, requireAuth, redirectIfLoggedIn, login, logout };

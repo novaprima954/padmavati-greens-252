@@ -1,4 +1,7 @@
 // js/app/plots.js
+// Auth check runs immediately — before DOMContentLoaded
+Auth.requireAuth();
+
 let allPlots   = [];
 let plotFilter = 'All';
 

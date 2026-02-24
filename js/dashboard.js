@@ -1,5 +1,9 @@
 // js/app/dashboard.js
+// Auth check runs immediately — before DOMContentLoaded
+const _session = Auth.requireAuth();
+
 document.addEventListener('DOMContentLoaded', () => {
+  if (!_session) return;
   Header.init('index');
   loadStats();
   loadRecent();

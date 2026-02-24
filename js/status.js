@@ -1,4 +1,7 @@
 // js/app/status.js
+// Auth check runs immediately — before DOMContentLoaded
+Auth.requireAuth();
+
 document.addEventListener('DOMContentLoaded', () => {
   Header.init('status');
 

@@ -1,4 +1,7 @@
 // js/app/bookings.js
+// Auth check runs immediately — before DOMContentLoaded
+Auth.requireAuth();
+
 let allBookings = [];
 let bookingCols = [];
 
