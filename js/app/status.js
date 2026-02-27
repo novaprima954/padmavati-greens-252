@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const placeholders = {
     receipt: 'e.g. PG-2025-123456',
     name:    'e.g. Ramesh Sharma',
-    phone:   'e.g. 9876543210'
+    phone:   'e.g. 9876543210',
+    plot:    'e.g. 12B'
   };
   document.getElementById('searchType').addEventListener('change', () => {
     document.getElementById('receiptInput').placeholder =
@@ -56,7 +57,8 @@ async function doSearch() {
       const q = query.toLowerCase();
       const matches = data.bookings.filter(b =>
         type==='name'  ? (b['Customer Full Name']||'').toLowerCase().includes(q) :
-        type==='phone' ? (b['Phone Number']||'').includes(q) : false
+        type==='phone' ? (b['Phone Number']||'').includes(q) :
+        type==='plot'  ? String(b['Plot No']||'').toLowerCase()===q : false
       );
       if (!matches.length) {
         multi.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><p>No bookings found for "${query}"</p></div>`;

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reports – Padmavati Greens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  (function(){
+    try { var s=JSON.parse(localStorage.getItem('pg_session')); if(!s||!s.token){window.location.replace('login.html');} if(s.role!=='admin'){window.location.replace('index.html');} }
+    catch(e){ window.location.replace('login.html'); }
+  })();
+</script>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="page-title">Reports</div>
+  <div class="page-sub">Financial reports and customer analysis</div>
+
+  <!-- Report selector cards -->
+  <div class="report-cards" id="reportCards">
+    <div class="report-card" data-report="ledger">
+      <div class="rc-icon">📒</div>
+      <div class="rc-name">Customer Ledger</div>
+      <div class="rc-desc">All plots owned by a customer — BR, RR, CR totals, paid, balance and installment schedule combined</div>
+    </div>
+    <div class="report-card" data-report="dues">
+      <div class="rc-icon">📅</div>
+      <div class="rc-name">Installment Due</div>
+      <div class="rc-desc">Customers with overdue or upcoming Part 1, 2 or 3 installments — filter by overdue / next 7–60 days</div>
+    </div>
+    <div class="report-card" data-report="excess">
+      <div class="rc-icon">⚖️</div>
+      <div class="rc-name">Excess Payments</div>
+      <div class="rc-desc">Customers who have paid more than the BR, RR or CR total — identify mismatches and adjustments needed</div>
+    </div>
+  </div>
+
+  <!-- Report view area -->
+  <div id="reportView" style="display:none;">
+    <div class="report-view-header">
+      <button class="btn-back" id="btnBack">← Back to Reports</button>
+      <div>
+        <div class="report-view-title" id="reportViewTitle"></div>
+        <div class="report-view-sub" id="reportViewSub"></div>
+      </div>
+      <button class="btn-print-report" onclick="window.print()">🖨 Print</button>
+    </div>
+
+    <!-- Ledger controls -->
+    <div id="ledgerControls" class="report-controls" style="display:none;">
+      <div class="report-search-wrap">
+        <input type="text" id="ledgerName" placeholder="Enter customer name…" class="report-input">
+        <button class="btn-report-search" id="ledgerSearchBtn">Search</button>
+      </div>
+    </div>
+
+    <!-- Dues controls -->
+    <div id="duesControls" class="report-controls" style="display:none;">
+      <div class="dues-filters">
+        <div class="filter-group">
+          <label>Show</label>
+          <select id="duesType" class="select-filter">
+            <option value="both">Overdue + Upcoming</option>
+            <option value="overdue">Overdue Only</option>
+            <option value="upcoming">Upcoming Only</option>
+          </select>
+        </div>
+        <div class="filter-group" id="upcomingDaysGroup">
+          <label>Upcoming within</label>
+          <select id="upcomingDays" class="select-filter">
+            <option value="7">7 days</option>
+            <option value="15">15 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="60">60 days</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Installment</label>
+          <select id="duesPart" class="select-filter">
+            <option value="all">All Parts</option>
+            <option value="1">Part 1 only</option>
+            <option value="2">Part 2 only</option>
+            <option value="3">Part 3 only</option>
+          </select>
+        </div>
+        <button class="btn-report-search" id="duesLoadBtn">Load Report</button>
+      </div>
+    </div>
+
+    <!-- Excess controls -->
+    <div id="excessControls" class="report-controls" style="display:none;">
+      <div class="dues-filters">
+        <div class="filter-group">
+          <label>Filter by excess in</label>
+          <select id="excessFilter" class="select-filter">
+            <option value="any">Any category</option>
+            <option value="BR">BR excess</option>
+            <option value="RR">RR excess</option>
+            <option value="CR">CR excess</option>
+          </select>
+        </div>
+        <button class="btn-report-search" id="excessLoadBtn">Load Report</button>
+      </div>
+    </div>
+
+    <!-- Report output -->
+    <div id="reportOutput"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/header.js"></script>
+<script src="js/app/reports.js"></script>
+</body>
+</html>

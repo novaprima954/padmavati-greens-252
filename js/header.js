@@ -5,18 +5,21 @@
 const Header = (() => {
 
   const NAV_ITEMS = [
-    { label: '🏠 Home',      href: 'index.html',    page: 'index' },
-    { label: '📍 Plots',     href: 'plots.html',    page: 'plots' },
-    { label: '📝 Book',      href: 'booking.html',  page: 'booking' },
-    { label: '🔍 Status',    href: 'status.html',   page: 'status' },
-    { label: '📋 Bookings',  href: 'bookings.html', page: 'bookings' },
+    { label: '🏠 Home',      href: 'index.html',    page: 'index',    roles: ['admin','sales'] },
+    { label: '📍 Plots',     href: 'plots.html',    page: 'plots',    roles: ['admin','sales'] },
+    { label: '📝 Book',      href: 'booking.html',  page: 'booking',  roles: ['admin','sales'] },
+    { label: '🔍 Status',    href: 'status.html',   page: 'status',   roles: ['admin','sales'] },
+    { label: '📋 Bookings',  href: 'bookings.html', page: 'bookings', roles: ['admin','sales'] },
+    { label: '📊 Reports',   href: 'reports.html',  page: 'reports',  roles: ['admin'] },
   ];
 
   function init(currentPage) {
     const session = Auth.requireAuth();
     if (!session) return;
 
-    const navHTML = NAV_ITEMS.map(item => `
+    const navHTML = NAV_ITEMS
+      .filter(item => item.roles.includes(session.role))
+      .map(item => `
       <a href="${item.href}" class="nav-btn${currentPage === item.page ? ' active' : ''}">
         ${item.label}
       </a>`).join('');

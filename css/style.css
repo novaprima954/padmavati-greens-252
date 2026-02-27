@@ -559,7 +559,7 @@ header {
 /* ════════════════════════════════════════════════
    STATUS PAGE
 ════════════════════════════════════════════════ */
-.lookup-wrap { max-width: 500px; margin: 0 auto 28px; display: flex; gap: 10px; }
+.lookup-wrap { max-width: 840px; margin: 0 auto 28px; display: flex; gap: 10px; }
 .lookup-wrap input {
   flex: 1; padding: 12px 15px;
   border: 1.5px solid var(--border); border-radius: var(--r);
@@ -573,7 +573,7 @@ header {
 }
 .btn-lookup:hover { opacity: .88; }
 
-.receipt-card { max-width: 620px; margin: 0 auto; background: var(--white); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); display: none; }
+.receipt-card { max-width: 980px; margin: 0 auto; background: var(--white); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); display: none; }
 .receipt-card.show { display: block; }
 .rc-head { background: var(--forest); padding: 22px 28px; display: flex; justify-content: space-between; align-items: flex-start; }
 .rc-tag  { font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.38); margin-bottom: 4px; }
@@ -756,7 +756,7 @@ header {
    STATUS PAGE — Multi-search results
 ════════════════════════════════════════════════ */
 .multi-results {
-  max-width: 620px;
+  max-width: 840px;
   margin: 0 auto 20px;
   background: var(--white);
   border: 1px solid var(--border);
@@ -840,8 +840,9 @@ header {
 .slide-panel {
   position: fixed;
   top: 0; right: 0; bottom: 0;
-  width: 480px;
-  max-width: 96vw;
+  width: 62vw;
+  max-width: 1000px;
+  min-width: 520px;
   background: var(--white);
   z-index: 400;
   display: flex;
@@ -874,7 +875,9 @@ header {
 .panel-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  overflow-x: hidden;
+  padding: 22px 24px;
+  scroll-behavior: smooth;
 }
 
 /* Balance grid */
@@ -886,7 +889,7 @@ header {
 }
 .bal-section {
   border-radius: var(--r);
-  padding: 14px;
+  padding: 16px;
   border: 1.5px solid;
 }
 .bal-rr { background: #e3f2fd; border-color: #90caf9; }
@@ -905,15 +908,15 @@ header {
 /* Installment mini */
 .inst-mini {
   background: var(--blue-l);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 10px;
+  padding: 14px 16px;
   margin-bottom: 8px;
-  font-size: .78rem;
+  font-size: .82rem;
 }
 .cr-inst { background: #fce4ec; }
 .inst-mini-title {
-  font-size: .65rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .07em; color: var(--blue); margin-bottom: 6px;
+  font-size: .72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--blue); margin-bottom: 8px;
 }
 .cr-inst .inst-mini-title { color: var(--red); }
 .inst-mini-row { display: flex; justify-content: space-between; padding: 3px 0; }
@@ -930,9 +933,19 @@ header {
 }
 .btn-view:hover { background: var(--forest); color: #fff; }
 
+@media (max-width: 1100px) {
+  .slide-panel { width: 75vw; }
+  .schedule-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 900px) {
+  .slide-panel { width: 85vw; min-width: 340px; }
+  .schedule-grid { grid-template-columns: 1fr; }
+  .bal-grid-3 { grid-template-columns: 1fr 1fr; }
+}
 @media (max-width: 600px) {
-  .slide-panel { width: 100vw; }
+  .slide-panel { width: 100vw; min-width: unset; }
   .bal-grid { grid-template-columns: 1fr; }
+  .bal-grid-3 { grid-template-columns: 1fr; }
   .rate-summary { flex-direction: column; gap: 8px; }
 }
 
@@ -942,8 +955,8 @@ header {
 .bal-grid-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .bal-br { background: #f3e5f5; border-color: #ce93d8; }
 .bal-br .bal-head { color: #7b1fa2; }
@@ -951,9 +964,9 @@ header {
 /* 3-column schedule grid */
 .schedule-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  margin-top: 4px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 6px;
 }
 .inst-br { background: #f3e5f5; }
 .inst-rr { background: #e3f2fd; }
@@ -965,22 +978,22 @@ header {
 /* Schedule row */
 .inst-mini-row {
   display: grid;
-  grid-template-columns: 2fr 1.6fr 1.4fr 1.4fr;
-  gap: 2px;
-  font-size: .73rem;
-  padding: 4px 0;
-  border-bottom: 1px solid rgba(0,0,0,.05);
+  grid-template-columns: 1.6fr 1.8fr 1.6fr 1.6fr;
+  gap: 4px;
+  font-size: .8rem;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0,0,0,.06);
   align-items: center;
 }
 .inst-mini-row.hdr {
-  font-size: .65rem;
+  font-size: .68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .04em;
   color: rgba(0,0,0,.4);
-  border-bottom: 1.5px solid rgba(0,0,0,.1);
-  padding-bottom: 5px;
-  margin-bottom: 2px;
+  border-bottom: 1.5px solid rgba(0,0,0,.12);
+  padding-bottom: 6px;
+  margin-bottom: 3px;
 }
 .inst-mini-row span:not(:first-child) { text-align: right; font-weight: 500; }
 .net-due { font-weight: 700 !important; color: var(--forest); }
