@@ -4,10 +4,9 @@ Auth.requireAuth();
 document.addEventListener('DOMContentLoaded', () => {
   Header.init('status');
   const placeholders = {
-    receipt: 'e.g. PG-2025-123456',
-    name:    'e.g. Ramesh Sharma',
-    phone:   'e.g. 9876543210',
-    plot:    'e.g. 12B'
+    name:  'e.g. Ramesh Sharma',
+    phone: 'e.g. 9876543210',
+    plot:  'e.g. 12B'
   };
   document.getElementById('searchType').addEventListener('change', () => {
     document.getElementById('receiptInput').placeholder =
@@ -33,22 +32,7 @@ async function doSearch() {
   multi.style.display='none';
   hint.style.display='none';
 
-  if (type==='receipt') {
-    card.innerHTML='<div class="loading-block"><div class="spinner"></div>Looking up…</div>';
-    card.classList.add('show');
-    try {
-      const [bRes, pRes] = await Promise.all([
-        API.get({ action:'getBookingByReceipt', receiptNo:query }),
-        API.get({ action:'getPayments', receiptNo:query })
-      ]);
-      if (bRes.error) throw new Error(bRes.error);
-      renderFullReceipt(bRes.booking, bRes.limited, pRes.payments||[]);
-    } catch(e) {
-      Utils.toast(e.message,'err');
-      card.classList.remove('show');
-      hint.style.display='block';
-    }
-  } else {
+  {
     multi.innerHTML='<div class="loading-block"><div class="spinner"></div>Searching…</div>';
     multi.style.display='block';
     try {
@@ -140,12 +124,12 @@ function renderFullReceipt(b, limited, payments) {
   const cr1=Math.round(crAmt*.35), cr2=Math.round(crAmt*.35), cr3=crAmt-cr1-cr2;
   const br1=Math.round(brAmt*.35), br2=Math.round(brAmt*.35), br3=brAmt-br1-br2;
 
-  const tokenEntry = payments.find(p=>(p['Notes']||'').toLowerCase().includes('token'));
-  const tokenAmt   = tokenEntry ? Number(tokenEntry['Amount'])||0 : 0;
-  const tokenMode  = tokenEntry ? (tokenEntry['Mode']||'') : '';
-  const tokRR = tokenMode!=='Cash' ? tokenAmt : 0;
-  const tokCR = tokenMode==='Cash' ? tokenAmt : 0;
-  const tokBR = tokenAmt;
+  // Net due with spill-over
+  const rrNets = Utils.calcNetDue([{gross:rr1},{gross:rr2},{gross:rr3}], rrPaid);
+  const crNets = Utils.calcNetDue([{gross:cr1},{gross:cr2},{gross:cr3}], crPaid);
+  const brNets = Utils.calcNetDue([{gross:br1},{gross:br2},{gross:br3}], brPaid);
+
+  const sess = Auth.getSession();
 
   let html = `
     <div class="rc-head">
@@ -213,15 +197,16 @@ function renderFullReceipt(b, limited, payments) {
     </div>`;
 
   // Installment schedules
-  function scheduleTable(label, cls, p1, p2, p3, tok) {
-    const net1 = Math.max(0, p1-tok);
+  function scheduleTable(label, cls, grossArr, nets, dates) {
+    const rows = grossArr.map((g,i) => {
+      const pcts = ['35%','35%','30%'];
+      const nc = nets[i].netDue===0 ? 'net-clear' : 'net-due';
+      return `<div class="inst-mini-row"><span>${i+1} · ${pcts[i]}</span><span>${dates[i]}</span><span>₹${Utils.fmtNum(g)}</span><span class="${nc}">₹${Utils.fmtNum(nets[i].netDue)}</span></div>`;
+    }).join('');
     return `<div class="inst-mini ${cls}">
       <div class="inst-mini-title">${label} Schedule</div>
       <div class="inst-mini-row hdr"><span>Part</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
-      <div class="inst-mini-row"><span>1 · 35%</span><span>${d10}</span><span>₹${Utils.fmtNum(p1)}</span><span class="net-due">₹${Utils.fmtNum(net1)}</span></div>
-      <div class="inst-mini-row"><span>2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(p2)}</span><span>₹${Utils.fmtNum(p2)}</span></div>
-      <div class="inst-mini-row"><span>3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(p3)}</span><span>₹${Utils.fmtNum(p3)}</span></div>
-      ${tok>0?`<div class="inst-mini-row tok-row"><span>Token paid</span><span></span><span></span><span>−₹${Utils.fmtNum(tok)}</span></div>`:''}
+      ${rows}
     </div>`;
   }
 
@@ -229,9 +214,9 @@ function renderFullReceipt(b, limited, payments) {
     <div class="rc-section">
       <div class="rc-section-title">Installment Schedule</div>
       <div class="schedule-grid">
-        ${scheduleTable('BR','inst-br',br1,br2,br3,tokBR)}
-        ${scheduleTable('RR','inst-rr',rr1,rr2,rr3,tokRR)}
-        ${scheduleTable('CR','inst-cr',cr1,cr2,cr3,tokCR)}
+        ${scheduleTable('BR','inst-br',[br1,br2,br3],brNets,[d10,d75,d165])}
+        ${scheduleTable('RR','inst-rr',[rr1,rr2,rr3],rrNets,[d10,d75,d165])}
+        ${scheduleTable('CR','inst-cr',[cr1,cr2,cr3],crNets,[d10,d75,d165])}
       </div>
     </div>`;
 
@@ -272,8 +257,8 @@ function renderFullReceipt(b, limited, payments) {
   }
   html += `</div>`;
 
-  // Add payment form (both roles)
-  if (b['Status']!=='Cancelled') {
+  // Add payment form — admin only
+  if (b['Status']!=='Cancelled' && sess && sess.role==='admin') {
     html += `
       <div class="rc-section" id="addPaymentSection">
         <div class="rc-section-title">Add Payment</div>
@@ -287,8 +272,8 @@ function renderFullReceipt(b, limited, payments) {
   card.innerHTML = html;
   card.classList.add('show');
 
-  // Attach add payment form if not cancelled
-  if (b['Status']!=='Cancelled') {
+  // Attach add payment form — admin only
+  if (b['Status']!=='Cancelled' && sess && sess.role==='admin') {
     renderAddPaymentForm('statusAddPayForm', b['Receipt No']);
   }
 }
@@ -318,6 +303,19 @@ function renderAddPaymentForm(containerId, receiptNo) {
       <input type="text" id="ap-notes-${containerId}" placeholder="Optional"></div>
     <div class="pay-hint">Cash → CR &nbsp;|&nbsp; All other modes → RR</div>
     <button class="btn-submit" id="ap-sub-${containerId}" style="padding:11px;">💾 Save Payment</button>`;
+
+  // Receipt → mode auto-detect
+  const sRcpt = document.getElementById(`ap-rcpt-${containerId}`);
+  const sMode = document.getElementById(`ap-mode-${containerId}`);
+  sRcpt.addEventListener('input', () => {
+    const det = Utils.receiptToMode(sRcpt.value);
+    if (det && sMode.value === '') { sMode.value = det; }
+  });
+  sRcpt.addEventListener('blur', () => {
+    const det = Utils.receiptToMode(sRcpt.value);
+    if (det && sMode.value && sMode.value !== det)
+      Utils.toast(`Receipt suggests ${det} — mode is ${sMode.value}`, 'err');
+  });
 
   document.getElementById(`ap-sub-${containerId}`).addEventListener('click', async () => {
     const amt  = document.getElementById(`ap-amt-${containerId}`).value;

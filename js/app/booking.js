@@ -36,6 +36,29 @@ document.addEventListener('DOMContentLoaded', () => {
   setupPickerTabs();
   setupRateCalc();
   document.getElementById('bookingForm').addEventListener('submit', submitBooking);
+
+  // Receipt number → auto-set payment mode
+  const rcpt1El   = document.getElementById('f-receipt1');
+  const paymodeEl = document.getElementById('f-paymode');
+  rcpt1El.addEventListener('input', () => {
+    const detected = Utils.receiptToMode(rcpt1El.value);
+    if (detected && paymodeEl.value === '') {
+      paymodeEl.value = detected;
+      paymodeEl.dispatchEvent(new Event('change'));
+    }
+  });
+  rcpt1El.addEventListener('blur', () => {
+    const detected = Utils.receiptToMode(rcpt1El.value);
+    if (detected && paymodeEl.value && paymodeEl.value !== detected) {
+      Utils.toast(`Receipt ${rcpt1El.value} suggests ${detected} — currently set to ${paymodeEl.value}`, 'err');
+    }
+  });
+  paymodeEl.addEventListener('change', () => {
+    const detected = Utils.receiptToMode(rcpt1El.value);
+    if (rcpt1El.value && detected && paymodeEl.value && paymodeEl.value !== detected) {
+      Utils.toast(`Receipt ${rcpt1El.value} suggests ${detected} — mode is set to ${paymodeEl.value}`, 'err');
+    }
+  });
   document.getElementById('waShareBtn').addEventListener('click', shareWhatsApp);
 });
 

@@ -51,9 +51,10 @@ function openReport(report) {
   document.getElementById('excessControls').style.display  = 'none';
 
   const titles = {
-    ledger: ['Customer Ledger', 'Search by customer name to see all plots and balances'],
-    dues:   ['Installment Due Report', 'All customers with outstanding installments'],
-    excess: ['Excess Payment Report', 'Customers where paid amount exceeds category total'],
+    ledger:   ['Customer Ledger', 'Search by customer name to see all plots and balances'],
+    dues:     ['Installment Due Report', 'All customers with outstanding installments'],
+    excess:   ['Excess Payment Report', 'Customers where paid amount exceeds category total'],
+    payments: ['Payment Receipt Report', 'All payment receipts filtered by date range'],
   };
   document.getElementById('reportViewTitle').textContent = titles[report][0];
   document.getElementById('reportViewSub').textContent   = titles[report][1];
@@ -67,6 +68,8 @@ function openReport(report) {
   } else if (report==='excess') {
     document.getElementById('excessControls').style.display = 'block';
     loadExcess();
+  } else if (report==='payments') {
+    document.getElementById('paymentsControls').style.display = 'block';
   }
 }
 
@@ -344,6 +347,97 @@ function renderExcess() {
       <td style="font-size:.75rem;color:var(--forest);">${actions.join('<br>')}</td>
     </tr>`;
   });
+
+  html += '</tbody></table></div>';
+  out.innerHTML = html;
+}
+
+// ── PAYMENT RECEIPTS ─────────────────────────────
+async function loadPayments() {
+  const dateFrom = document.getElementById('pyDateFrom').value;
+  const dateTo   = document.getElementById('pyDateTo').value;
+  const out      = document.getElementById('reportOutput');
+  out.innerHTML  = '<div class="loading-block"><div class="spinner"></div>Loading…</div>';
+  try {
+    const data = await API.get({ action:'getReportPayments', dateFrom, dateTo });
+    if (data.error) throw new Error(data.error);
+    renderPayments(data);
+  } catch(e) {
+    out.innerHTML = `<div class="empty-state"><div class="empty-icon">🧾</div><p>${e.message}</p></div>`;
+  }
+}
+
+function renderPayments(data) {
+  const { rows, totalAmt, dateFrom, dateTo } = data;
+  const out = document.getElementById('reportOutput');
+  const subtitle = dateFrom && dateTo
+    ? `${rows.length} payments · ${dateFrom} to ${dateTo}`
+    : `${rows.length} payments (all time)`;
+  document.getElementById('reportViewSub').textContent = subtitle;
+
+  if (!rows.length) {
+    out.innerHTML = '<div class="empty-state"><div class="empty-icon">🧾</div><p>No payments found for this date range</p></div>';
+    return;
+  }
+
+  // Group totals by mode and against
+  const byMode = {}, byAgainst = { CR:0, RR:0 };
+  rows.forEach(r => {
+    byMode[r.mode] = (byMode[r.mode]||0) + r.amount;
+    if (r.against==='CR') byAgainst.CR += r.amount;
+    else                   byAgainst.RR += r.amount;
+  });
+
+  let html = `
+    <div class="py-summary">
+      <div class="py-sum-card">
+        <div class="py-sum-label">Total Collected</div>
+        <div class="py-sum-val">₹${Utils.fmtNum(totalAmt)}</div>
+      </div>
+      <div class="py-sum-card py-cr">
+        <div class="py-sum-label">Against CR</div>
+        <div class="py-sum-val">₹${Utils.fmtNum(byAgainst.CR)}</div>
+      </div>
+      <div class="py-sum-card py-rr">
+        <div class="py-sum-label">Against RR</div>
+        <div class="py-sum-val">₹${Utils.fmtNum(byAgainst.RR)}</div>
+      </div>
+      ${Object.entries(byMode).map(([m,a])=>`
+      <div class="py-sum-card py-mode">
+        <div class="py-sum-label">${m}</div>
+        <div class="py-sum-val">₹${Utils.fmtNum(a)}</div>
+      </div>`).join('')}
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" style="font-size:.8rem;">
+        <thead><tr>
+          <th>Payment Date</th><th>Manual Receipt</th><th>Amount</th>
+          <th>Mode</th><th>Reference</th><th>Against</th>
+          <th>Customer</th><th>Plot</th><th>Notes</th><th>By</th>
+        </tr></thead>
+        <tbody>`;
+
+  rows.forEach(r => {
+    html += `<tr>
+      <td>${r.paymentDate}</td>
+      <td>${r.manualReceipt||'—'}</td>
+      <td><strong>₹${Utils.fmtNum(r.amount)}</strong></td>
+      <td>${r.mode}</td>
+      <td style="font-size:.72rem;">${r.reference||'—'}</td>
+      <td><span class="badge ${r.against==='CR'?'badge-booked':'badge-avail'}">${r.against}</span></td>
+      <td>${r.customerName||'—'}</td>
+      <td>Plot ${r.plotNumber||'—'}</td>
+      <td style="font-size:.72rem;color:var(--grey);">${r.notes||''}</td>
+      <td style="font-size:.72rem;">${r.inputterName||'—'}</td>
+    </tr>`;
+  });
+
+  // Total row
+  html += `<tr class="total-row">
+    <td colspan="2"><strong>Total (${rows.length} payments)</strong></td>
+    <td><strong>₹${Utils.fmtNum(totalAmt)}</strong></td>
+    <td colspan="7"></td>
+  </tr>`;
 
   html += '</tbody></table></div>';
   out.innerHTML = html;

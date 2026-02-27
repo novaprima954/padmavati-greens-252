@@ -60,5 +60,28 @@ const Utils = (() => {
     return `<span class="badge ${map[status] || ''}">${status}</span>`;
   }
 
-  return { toast, fmtNum, fmtCurrency, openOverlay, closeOverlay, setupOverlays, setLoading, statusBadge };
+
+  // ── Net due with spill-over logic ──────────────
+  // payments fill Part1 first, overflow into Part2, then Part3
+  // parts = [{gross: number}, {gross: number}, {gross: number}]
+  // totalPaid = total paid for this category (RR or CR)
+  // returns [{gross, netDue}, ...]
+  function calcNetDue(parts, totalPaid) {
+    let remaining = totalPaid;
+    return parts.map(p => {
+      const absorbed = Math.min(remaining, p.gross);
+      remaining -= absorbed;
+      return { gross: p.gross, netDue: Math.max(0, p.gross - absorbed) };
+    });
+  }
+
+  // ── Receipt → mode detection ──────────────────
+  // 1-2000 = Cash, else non-cash
+  function receiptToMode(receiptVal) {
+    const n = parseInt(String(receiptVal).trim());
+    if (!isNaN(n) && n >= 1 && n <= 2000) return 'Cash';
+    return null; // non-cash but don't assume specific mode
+  }
+
+  return { toast, fmtNum, fmtCurrency, openOverlay, closeOverlay, setupOverlays, setLoading, statusBadge, calcNetDue, receiptToMode };
 })();

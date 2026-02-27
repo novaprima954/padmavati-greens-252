@@ -113,45 +113,36 @@ function renderPanelBody(booking, payments, receiptNo) {
   const rrAmt = Number(booking['RR Amount']) || 0;
   const crAmt = Number(booking['CR Amount']) || 0;
   const brAmt = Number(booking['BR Amount']) || 0;
+  const sess  = Auth.getSession();
 
-  // Sum from Payments sheet only — token is already in there as first entry
+  // Sum from Payments sheet only
   let rrPaid=0, crPaid=0;
   payments.forEach(p => {
     if (p['Against']==='RR') rrPaid += Number(p['Amount'])||0;
     else                      crPaid += Number(p['Amount'])||0;
   });
-  const brPaid  = rrPaid + crPaid;
-  const rrBal   = Math.max(0, rrAmt - rrPaid);
-  const crBal   = Math.max(0, crAmt - crPaid);
-  const brBal   = Math.max(0, brAmt - brPaid);
+  const brPaid = rrPaid + crPaid;
+  const rrBal  = Math.max(0, rrAmt - rrPaid);
+  const crBal  = Math.max(0, crAmt - crPaid);
+  const brBal  = Math.max(0, brAmt - brPaid);
 
-  // Schedule dates from booking date
-  const bdStr   = booking['Booking Date'] || '';
-  const bdDate  = parseDateIN(bdStr);
+  // Schedule dates
+  const bdDate = parseDateIN(booking['Booking Date'] || '');
   const d10  = fmtDate(addDays(bdDate, 10));
   const d75  = fmtDate(addDays(bdDate, 75));
   const d165 = fmtDate(addDays(bdDate, 165));
 
-  // Part amounts
-  const rr1 = Math.round(rrAmt*0.35), rr2 = Math.round(rrAmt*0.35), rr3 = rrAmt-rr1-rr2;
-  const cr1 = Math.round(crAmt*0.35), cr2 = Math.round(crAmt*0.35), cr3 = crAmt-cr1-cr2;
-  const br1 = Math.round(brAmt*0.35), br2 = Math.round(brAmt*0.35), br3 = brAmt-br1-br2;
+  // Gross part amounts
+  const rr1=Math.round(rrAmt*.35), rr2=Math.round(rrAmt*.35), rr3=rrAmt-rr1-rr2;
+  const cr1=Math.round(crAmt*.35), cr2=Math.round(crAmt*.35), cr3=crAmt-cr1-cr2;
+  const br1=Math.round(brAmt*.35), br2=Math.round(brAmt*.35), br3=brAmt-br1-br2;
 
-  // Token deduction — check latest token entry
-  const tokenEntry = payments.find(p => (p['Notes']||'').toLowerCase().includes('token'));
-  const tokenAmt   = tokenEntry ? Number(tokenEntry['Amount'])||0 : 0;
-  const tokenMode  = tokenEntry ? (tokenEntry['Mode']||'') : '';
-  const tokRR      = tokenMode!=='Cash' ? tokenAmt : 0;
-  const tokCR      = tokenMode==='Cash' ? tokenAmt : 0;
-  const tokBR      = tokenAmt;
-
-  // Part 1 net due (after token)
-  const rr1Net = Math.max(0, rr1 - tokRR);
-  const cr1Net = Math.max(0, cr1 - tokCR);
-  const br1Net = Math.max(0, br1 - tokBR);
+  // Net due with spill-over (payments fill Part1 first)
+  const rrNets = Utils.calcNetDue([{gross:rr1},{gross:rr2},{gross:rr3}], rrPaid);
+  const crNets = Utils.calcNetDue([{gross:cr1},{gross:cr2},{gross:cr3}], crPaid);
+  const brNets = Utils.calcNetDue([{gross:br1},{gross:br2},{gross:br3}], brPaid);
 
   document.getElementById('panelBalances').innerHTML = `
-    <!-- Balance cards -->
     <div class="bal-grid-3">
       <div class="bal-section bal-br">
         <div class="bal-head">BR</div>
@@ -172,44 +163,27 @@ function renderPanelBody(booking, payments, receiptNo) {
         <div class="bal-row bal-outstanding"><span>Balance</span><span>₹${Utils.fmtNum(crBal)}</span></div>
       </div>
     </div>
-
-    <!-- Schedules -->
     <div class="schedule-grid">
       <div class="inst-mini inst-br">
         <div class="inst-mini-title">BR Schedule</div>
-        <div class="inst-mini-row hdr"><span>Installment</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
-        <div class="inst-mini-row">
-          <span>Part 1 · 35%</span><span>${d10}</span>
-          <span>₹${Utils.fmtNum(br1)}</span>
-          <span class="net-due">₹${Utils.fmtNum(br1Net)}</span>
-        </div>
-        <div class="inst-mini-row"><span>Part 2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(br2)}</span><span>₹${Utils.fmtNum(br2)}</span></div>
-        <div class="inst-mini-row"><span>Part 3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(br3)}</span><span>₹${Utils.fmtNum(br3)}</span></div>
-        ${tokenAmt>0?`<div class="inst-mini-row tok-row"><span colspan="2">Token paid</span><span></span><span>−₹${Utils.fmtNum(tokBR)}</span></div>`:''}
+        <div class="inst-mini-row hdr"><span>Part</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
+        <div class="inst-mini-row"><span>1 · 35%</span><span>${d10}</span><span>₹${Utils.fmtNum(br1)}</span><span class="${brNets[0].netDue===0?'net-clear':'net-due'}">₹${Utils.fmtNum(brNets[0].netDue)}</span></div>
+        <div class="inst-mini-row"><span>2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(br2)}</span><span class="${brNets[1].netDue===0?'net-clear':'net-due'}">₹${Utils.fmtNum(brNets[1].netDue)}</span></div>
+        <div class="inst-mini-row"><span>3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(br3)}</span><span class="${brNets[2].netDue===0?'net-clear':'net-due'}">₹${Utils.fmtNum(brNets[2].netDue)}</span></div>
       </div>
       <div class="inst-mini inst-rr">
         <div class="inst-mini-title">RR Schedule</div>
-        <div class="inst-mini-row hdr"><span>Installment</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
-        <div class="inst-mini-row">
-          <span>Part 1 · 35%</span><span>${d10}</span>
-          <span>₹${Utils.fmtNum(rr1)}</span>
-          <span class="net-due">₹${Utils.fmtNum(rr1Net)}</span>
-        </div>
-        <div class="inst-mini-row"><span>Part 2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(rr2)}</span><span>₹${Utils.fmtNum(rr2)}</span></div>
-        <div class="inst-mini-row"><span>Part 3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(rr3)}</span><span>₹${Utils.fmtNum(rr3)}</span></div>
-        ${tokRR>0?`<div class="inst-mini-row tok-row"><span>Token paid</span><span></span><span></span><span>−₹${Utils.fmtNum(tokRR)}</span></div>`:''}
+        <div class="inst-mini-row hdr"><span>Part</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
+        <div class="inst-mini-row"><span>1 · 35%</span><span>${d10}</span><span>₹${Utils.fmtNum(rr1)}</span><span class="${rrNets[0].netDue===0?'net-clear':'net-due'}">₹${Utils.fmtNum(rrNets[0].netDue)}</span></div>
+        <div class="inst-mini-row"><span>2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(rr2)}</span><span class="${rrNets[1].netDue===0?'net-clear':'net-due'}">₹${Utils.fmtNum(rrNets[1].netDue)}</span></div>
+        <div class="inst-mini-row"><span>3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(rr3)}</span><span class="${rrNets[2].netDue===0?'net-clear':'net-due'}">₹${Utils.fmtNum(rrNets[2].netDue)}</span></div>
       </div>
       <div class="inst-mini inst-cr">
         <div class="inst-mini-title">CR Schedule</div>
-        <div class="inst-mini-row hdr"><span>Installment</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
-        <div class="inst-mini-row">
-          <span>Part 1 · 35%</span><span>${d10}</span>
-          <span>₹${Utils.fmtNum(cr1)}</span>
-          <span class="net-due">₹${Utils.fmtNum(cr1Net)}</span>
-        </div>
-        <div class="inst-mini-row"><span>Part 2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(cr2)}</span><span>₹${Utils.fmtNum(cr2)}</span></div>
-        <div class="inst-mini-row"><span>Part 3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(cr3)}</span><span>₹${Utils.fmtNum(cr3)}</span></div>
-        ${tokCR>0?`<div class="inst-mini-row tok-row"><span>Token paid</span><span></span><span></span><span>−₹${Utils.fmtNum(tokCR)}</span></div>`:''}
+        <div class="inst-mini-row hdr"><span>Part</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
+        <div class="inst-mini-row"><span>1 · 35%</span><span>${d10}</span><span>₹${Utils.fmtNum(cr1)}</span><span class="${crNets[0].netDue===0?'net-clear':'net-due'}">₹${Utils.fmtNum(crNets[0].netDue)}</span></div>
+        <div class="inst-mini-row"><span>2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(cr2)}</span><span class="${crNets[1].netDue===0?'net-clear':'net-due'}">₹${Utils.fmtNum(crNets[1].netDue)}</span></div>
+        <div class="inst-mini-row"><span>3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(cr3)}</span><span class="${crNets[2].netDue===0?'net-clear':'net-due'}">₹${Utils.fmtNum(crNets[2].netDue)}</span></div>
       </div>
     </div>`;
 
@@ -263,6 +237,24 @@ function renderAddPaymentForm(containerId, receiptNo) {
       <input type="text" id="ap-notes-${containerId}" placeholder="Optional"></div>
     <div class="pay-hint">Cash → CR &nbsp;|&nbsp; All other modes → RR</div>
     <button class="btn-submit" id="ap-submit-${containerId}" style="padding:11px;">💾 Save Payment</button>`;
+
+  // Receipt number → auto-set mode
+  const apRcpt = document.getElementById(`ap-rcpt-${containerId}`);
+  const apMode = document.getElementById(`ap-mode-${containerId}`);
+  apRcpt.addEventListener('input', () => {
+    const det = Utils.receiptToMode(apRcpt.value);
+    if (det && apMode.value === '') { apMode.value = det; }
+  });
+  apRcpt.addEventListener('blur', () => {
+    const det = Utils.receiptToMode(apRcpt.value);
+    if (det && apMode.value && apMode.value !== det)
+      Utils.toast(`Receipt suggests ${det} — mode is ${apMode.value}`, 'err');
+  });
+  apMode.addEventListener('change', () => {
+    const det = Utils.receiptToMode(apRcpt.value);
+    if (apRcpt.value && det && apMode.value && apMode.value !== det)
+      Utils.toast(`Receipt suggests ${det} — mode is ${apMode.value}`, 'err');
+  });
 
   document.getElementById(`ap-submit-${containerId}`).addEventListener('click', async () => {
     const amt  = document.getElementById(`ap-amt-${containerId}`).value;

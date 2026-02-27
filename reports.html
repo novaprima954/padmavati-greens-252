@@ -36,6 +36,11 @@
       <div class="rc-name">Excess Payments</div>
       <div class="rc-desc">Customers who have paid more than the BR, RR or CR total — identify mismatches and adjustments needed</div>
     </div>
+    <div class="report-card" data-report="payments">
+      <div class="rc-icon">🧾</div>
+      <div class="rc-name">Payment Receipt Report</div>
+      <div class="rc-desc">All payment receipts for a date range — amount, mode, against, customer, plot and inputter</div>
+    </div>
   </div>
 
   <!-- Report view area -->
@@ -103,6 +108,21 @@
           </select>
         </div>
         <button class="btn-report-search" id="excessLoadBtn">Load Report</button>
+      </div>
+    </div>
+
+    <!-- Payments controls -->
+    <div id="paymentsControls" class="report-controls" style="display:none;">
+      <div class="dues-filters">
+        <div class="filter-group">
+          <label>From Date</label>
+          <input type="date" id="pyDateFrom" class="report-input" style="width:160px;">
+        </div>
+        <div class="filter-group">
+          <label>To Date</label>
+          <input type="date" id="pyDateTo" class="report-input" style="width:160px;">
+        </div>
+        <button class="btn-report-search" id="paymentsLoadBtn">Load Report</button>
       </div>
     </div>
 
