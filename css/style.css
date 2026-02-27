@@ -935,3 +935,87 @@ header {
   .bal-grid { grid-template-columns: 1fr; }
   .rate-summary { flex-direction: column; gap: 8px; }
 }
+
+/* ════════════════════════════════════════════════
+   3-COLUMN BALANCE GRID (BR + RR + CR)
+════════════════════════════════════════════════ */
+.bal-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.bal-br { background: #f3e5f5; border-color: #ce93d8; }
+.bal-br .bal-head { color: #7b1fa2; }
+
+/* 3-column schedule grid */
+.schedule-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+.inst-br { background: #f3e5f5; }
+.inst-rr { background: #e3f2fd; }
+.inst-cr { background: #fce4ec; }
+.inst-br .inst-mini-title { color: #7b1fa2; }
+.inst-rr .inst-mini-title { color: #1565c0; }
+.inst-cr .inst-mini-title { color: #c62828; }
+
+/* Schedule row */
+.inst-mini-row {
+  display: grid;
+  grid-template-columns: 2fr 1.6fr 1.4fr 1.4fr;
+  gap: 2px;
+  font-size: .73rem;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(0,0,0,.05);
+  align-items: center;
+}
+.inst-mini-row.hdr {
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: rgba(0,0,0,.4);
+  border-bottom: 1.5px solid rgba(0,0,0,.1);
+  padding-bottom: 5px;
+  margin-bottom: 2px;
+}
+.inst-mini-row span:not(:first-child) { text-align: right; font-weight: 500; }
+.net-due { font-weight: 700 !important; color: var(--forest); }
+.tok-row { opacity: .7; }
+.tok-row span:last-child { color: var(--red) !important; font-weight: 600 !important; }
+
+/* Pay hint */
+.pay-hint {
+  font-size: .74rem;
+  color: var(--grey);
+  margin: 6px 0 12px;
+  padding: 6px 10px;
+  background: var(--mist);
+  border-radius: 6px;
+}
+
+/* Slide panel — bigger + title */
+.panel-title-main {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+.panel-title-sub {
+  font-size: .72rem;
+  color: rgba(255,255,255,.5);
+  margin-top: 2px;
+}
+
+@media (max-width: 760px) {
+  .bal-grid-3   { grid-template-columns: 1fr 1fr; }
+  .schedule-grid { grid-template-columns: 1fr; }
+  .inst-mini-row { grid-template-columns: 1.8fr 1.4fr 1.2fr 1.2fr; font-size:.68rem; }
+}
+@media (max-width: 480px) {
+  .bal-grid-3 { grid-template-columns: 1fr; }
+}

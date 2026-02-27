@@ -10,8 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadBookings();
   document.getElementById('bSearch').addEventListener('input', filterBookings);
   document.getElementById('bStatusFilter').addEventListener('change', filterBookings);
-
-  // Close slide-in panel
   document.getElementById('panelClose').addEventListener('click', closePanel);
   document.getElementById('panelOverlay').addEventListener('click', closePanel);
 });
@@ -24,10 +22,8 @@ async function loadBookings() {
     currentRole = data.role;
     buildColumns(data.role);
     filterBookings();
-    const sub = data.role==='admin'
-      ? `${allBookings.length} total bookings — full admin view`
-      : `${allBookings.length} bookings`;
-    document.getElementById('bookingsSubtitle').textContent = sub;
+    document.getElementById('bookingsSubtitle').textContent =
+      `${allBookings.length} total bookings`;
   } catch(e) {
     document.getElementById('bookingsTbody').innerHTML =
       `<tr><td colspan="10" style="padding:30px;text-align:center;color:var(--grey);">${e.message}</td></tr>`;
@@ -35,11 +31,11 @@ async function loadBookings() {
 }
 
 function buildColumns(role) {
-  const isAdmin = role==='admin';
-  bookingCols = isAdmin
+  bookingCols = role==='admin'
     ? ['Receipt No','Booking Date','Booked By Name','Customer Full Name','Phone Number',
        'Plot No','Token Amount','Payment Mode','BR Amount','RR Amount','CR Amount','Status','Action']
-    : ['Receipt No','Booking Date','Booked By Name','Plot No','Token Amount','Payment Mode','Status'];
+    : ['Receipt No','Booking Date','Booked By Name','Customer Full Name','Plot No',
+       'Token Amount','Payment Mode','Status','Action'];
   document.getElementById('bookingsThead').innerHTML =
     '<tr>'+bookingCols.map(c=>`<th>${c==='Action'?'':c}</th>`).join('')+'</tr>';
 }
@@ -66,12 +62,12 @@ function renderTable(rows) {
     if (col==='Action') {
       let btns = `<button class="btn-view" data-receipt="${b['Receipt No']}">📂 Payments</button>`;
       if (currentRole==='admin' && b['Status']!=='Cancelled')
-        btns += ` <button class="btn-cancel" data-receipt="${b['Receipt No']}">✕ Cancel</button>`;
+        btns += ` <button class="btn-cancel" data-receipt="${b['Receipt No']}">✕</button>`;
       return `<td style="white-space:nowrap;">${btns}</td>`;
     }
     if (col==='Status') return `<td>${Utils.statusBadge(b['Status']||'Active')}</td>`;
     if (['Token Amount','BR Amount','RR Amount','CR Amount'].includes(col))
-      return `<td>${b[col] ? '₹'+Utils.fmtNum(b[col]) : '—'}</td>`;
+      return `<td>${b[col]?'₹'+Utils.fmtNum(b[col]):'—'}</td>`;
     if (col==='Receipt No')
       return `<td><a href="status.html?receipt=${b[col]}" style="color:var(--forest);font-weight:600;text-decoration:underline;">${b[col]||'—'}</a></td>`;
     return `<td>${b[col]!==undefined&&b[col]!==''?b[col]:'—'}</td>`;
@@ -85,58 +81,84 @@ function renderTable(rows) {
 
 // ── Payment Panel ─────────────────────────────────
 async function openPaymentPanel(receiptNo) {
-  const panel = document.getElementById('slidePanel');
+  const panel   = document.getElementById('slidePanel');
   const overlay = document.getElementById('panelOverlay');
 
-  document.getElementById('panelReceiptNo').textContent = receiptNo;
-  document.getElementById('paymentsList').innerHTML =
-    '<div class="loading-block"><div class="spinner"></div>Loading…</div>';
-  document.getElementById('panelBalances').innerHTML = '';
+  // Reset
+  document.getElementById('panelTitle').textContent    = 'Loading…';
+  document.getElementById('panelSubtitle').textContent = receiptNo;
+  document.getElementById('panelBalances').innerHTML   = '<div class="loading-block"><div class="spinner"></div></div>';
+  document.getElementById('paymentsList').innerHTML    = '';
+  document.getElementById('addPaymentForm').innerHTML  = '';
 
   panel.classList.add('open');
   overlay.classList.add('show');
 
-  // Get booking details + payments
   const [bRes, pRes] = await Promise.all([
     API.get({ action:'getBookingByReceipt', receiptNo }),
     API.get({ action:'getPayments', receiptNo })
   ]);
 
-  const booking  = bRes.booking || {};
+  const booking  = bRes.booking  || {};
   const payments = pRes.payments || [];
 
-  // Balances
+  // Panel title = Customer Name + Plot No
+  document.getElementById('panelTitle').textContent    = booking['Customer Full Name'] || receiptNo;
+  document.getElementById('panelSubtitle').textContent = `Plot ${booking['Plot No']||'—'} · ${receiptNo}`;
+
+  renderPanelBody(booking, payments, receiptNo);
+}
+
+function renderPanelBody(booking, payments, receiptNo) {
   const rrAmt = Number(booking['RR Amount']) || 0;
   const crAmt = Number(booking['CR Amount']) || 0;
-  const tokenAmt  = Number(booking['Token Amount']) || 0;
-  const tokenMode = booking['Payment Mode'] || '';
-  const tokenIsRR = tokenMode !== 'Cash';
+  const brAmt = Number(booking['BR Amount']) || 0;
 
-  // Sum payments (excluding token which is already in payments sheet)
-  let rrPaid = tokenIsRR ? tokenAmt : 0;
-  let crPaid = tokenIsRR ? 0 : tokenAmt;
+  // Sum from Payments sheet only — token is already in there as first entry
+  let rrPaid=0, crPaid=0;
   payments.forEach(p => {
     if (p['Against']==='RR') rrPaid += Number(p['Amount'])||0;
     else                      crPaid += Number(p['Amount'])||0;
   });
-  const rrBal = Math.max(0, rrAmt - rrPaid);
-  const crBal = Math.max(0, crAmt - crPaid);
+  const brPaid  = rrPaid + crPaid;
+  const rrBal   = Math.max(0, rrAmt - rrPaid);
+  const crBal   = Math.max(0, crAmt - crPaid);
+  const brBal   = Math.max(0, brAmt - brPaid);
 
-  // Installments (based on booking date)
-  const bdStr = booking['Booking Date'] || '';
-  let bdDate  = null;
-  if (bdStr) {
-    const parts = bdStr.split('/');
-    if (parts.length===3) bdDate = new Date(parts[2], parts[1]-1, parts[0]);
-  }
-  function addDays(d, n) {
-    if (!d) return '—';
-    const nd = new Date(d); nd.setDate(nd.getDate()+n);
-    return nd.toLocaleDateString('en-IN');
-  }
+  // Schedule dates from booking date
+  const bdStr   = booking['Booking Date'] || '';
+  const bdDate  = parseDateIN(bdStr);
+  const d10  = fmtDate(addDays(bdDate, 10));
+  const d75  = fmtDate(addDays(bdDate, 75));
+  const d165 = fmtDate(addDays(bdDate, 165));
+
+  // Part amounts
+  const rr1 = Math.round(rrAmt*0.35), rr2 = Math.round(rrAmt*0.35), rr3 = rrAmt-rr1-rr2;
+  const cr1 = Math.round(crAmt*0.35), cr2 = Math.round(crAmt*0.35), cr3 = crAmt-cr1-cr2;
+  const br1 = Math.round(brAmt*0.35), br2 = Math.round(brAmt*0.35), br3 = brAmt-br1-br2;
+
+  // Token deduction — check latest token entry
+  const tokenEntry = payments.find(p => (p['Notes']||'').toLowerCase().includes('token'));
+  const tokenAmt   = tokenEntry ? Number(tokenEntry['Amount'])||0 : 0;
+  const tokenMode  = tokenEntry ? (tokenEntry['Mode']||'') : '';
+  const tokRR      = tokenMode!=='Cash' ? tokenAmt : 0;
+  const tokCR      = tokenMode==='Cash' ? tokenAmt : 0;
+  const tokBR      = tokenAmt;
+
+  // Part 1 net due (after token)
+  const rr1Net = Math.max(0, rr1 - tokRR);
+  const cr1Net = Math.max(0, cr1 - tokCR);
+  const br1Net = Math.max(0, br1 - tokBR);
 
   document.getElementById('panelBalances').innerHTML = `
-    <div class="bal-grid">
+    <!-- Balance cards -->
+    <div class="bal-grid-3">
+      <div class="bal-section bal-br">
+        <div class="bal-head">BR</div>
+        <div class="bal-row"><span>Total</span><span>₹${Utils.fmtNum(brAmt)}</span></div>
+        <div class="bal-row"><span>Paid</span><span>₹${Utils.fmtNum(brPaid)}</span></div>
+        <div class="bal-row bal-outstanding"><span>Balance</span><span>₹${Utils.fmtNum(brBal)}</span></div>
+      </div>
       <div class="bal-section bal-rr">
         <div class="bal-head">RR</div>
         <div class="bal-row"><span>Total</span><span>₹${Utils.fmtNum(rrAmt)}</span></div>
@@ -150,94 +172,119 @@ async function openPaymentPanel(receiptNo) {
         <div class="bal-row bal-outstanding"><span>Balance</span><span>₹${Utils.fmtNum(crBal)}</span></div>
       </div>
     </div>
-    <div class="inst-mini">
-      <div class="inst-mini-title">Schedule (RR)</div>
-      <div class="inst-mini-row"><span>35% · ${addDays(bdDate,30)}</span><span>₹${Utils.fmtNum(Math.round(rrAmt*.35))}</span></div>
-      <div class="inst-mini-row"><span>35% · ${addDays(bdDate,60)}</span><span>₹${Utils.fmtNum(Math.round(rrAmt*.35))}</span></div>
-      <div class="inst-mini-row"><span>30% · ${addDays(bdDate,90)}</span><span>₹${Utils.fmtNum(rrAmt - Math.round(rrAmt*.35)*2)}</span></div>
-    </div>
-    <div class="inst-mini cr-inst">
-      <div class="inst-mini-title">Schedule (CR)</div>
-      <div class="inst-mini-row"><span>35% · ${addDays(bdDate,30)}</span><span>₹${Utils.fmtNum(Math.round(crAmt*.35))}</span></div>
-      <div class="inst-mini-row"><span>35% · ${addDays(bdDate,60)}</span><span>₹${Utils.fmtNum(Math.round(crAmt*.35))}</span></div>
-      <div class="inst-mini-row"><span>30% · ${addDays(bdDate,90)}</span><span>₹${Utils.fmtNum(crAmt - Math.round(crAmt*.35)*2)}</span></div>
+
+    <!-- Schedules -->
+    <div class="schedule-grid">
+      <div class="inst-mini inst-br">
+        <div class="inst-mini-title">BR Schedule</div>
+        <div class="inst-mini-row hdr"><span>Installment</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
+        <div class="inst-mini-row">
+          <span>Part 1 · 35%</span><span>${d10}</span>
+          <span>₹${Utils.fmtNum(br1)}</span>
+          <span class="net-due">₹${Utils.fmtNum(br1Net)}</span>
+        </div>
+        <div class="inst-mini-row"><span>Part 2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(br2)}</span><span>₹${Utils.fmtNum(br2)}</span></div>
+        <div class="inst-mini-row"><span>Part 3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(br3)}</span><span>₹${Utils.fmtNum(br3)}</span></div>
+        ${tokenAmt>0?`<div class="inst-mini-row tok-row"><span colspan="2">Token paid</span><span></span><span>−₹${Utils.fmtNum(tokBR)}</span></div>`:''}
+      </div>
+      <div class="inst-mini inst-rr">
+        <div class="inst-mini-title">RR Schedule</div>
+        <div class="inst-mini-row hdr"><span>Installment</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
+        <div class="inst-mini-row">
+          <span>Part 1 · 35%</span><span>${d10}</span>
+          <span>₹${Utils.fmtNum(rr1)}</span>
+          <span class="net-due">₹${Utils.fmtNum(rr1Net)}</span>
+        </div>
+        <div class="inst-mini-row"><span>Part 2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(rr2)}</span><span>₹${Utils.fmtNum(rr2)}</span></div>
+        <div class="inst-mini-row"><span>Part 3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(rr3)}</span><span>₹${Utils.fmtNum(rr3)}</span></div>
+        ${tokRR>0?`<div class="inst-mini-row tok-row"><span>Token paid</span><span></span><span></span><span>−₹${Utils.fmtNum(tokRR)}</span></div>`:''}
+      </div>
+      <div class="inst-mini inst-cr">
+        <div class="inst-mini-title">CR Schedule</div>
+        <div class="inst-mini-row hdr"><span>Installment</span><span>Due Date</span><span>Amount</span><span>Net Due</span></div>
+        <div class="inst-mini-row">
+          <span>Part 1 · 35%</span><span>${d10}</span>
+          <span>₹${Utils.fmtNum(cr1)}</span>
+          <span class="net-due">₹${Utils.fmtNum(cr1Net)}</span>
+        </div>
+        <div class="inst-mini-row"><span>Part 2 · 35%</span><span>${d75}</span><span>₹${Utils.fmtNum(cr2)}</span><span>₹${Utils.fmtNum(cr2)}</span></div>
+        <div class="inst-mini-row"><span>Part 3 · 30%</span><span>${d165}</span><span>₹${Utils.fmtNum(cr3)}</span><span>₹${Utils.fmtNum(cr3)}</span></div>
+        ${tokCR>0?`<div class="inst-mini-row tok-row"><span>Token paid</span><span></span><span></span><span>−₹${Utils.fmtNum(tokCR)}</span></div>`:''}
+      </div>
     </div>`;
 
-  // Payments list
+  // Payment history
+  const phEl = document.getElementById('paymentsList');
   if (!payments.length) {
-    document.getElementById('paymentsList').innerHTML =
-      '<div class="empty-state" style="padding:20px;"><div class="empty-icon">💳</div><p>No additional payments recorded</p></div>';
+    phEl.innerHTML = '<div style="font-size:.8rem;color:var(--grey);padding:12px 0;">No payments recorded yet</div>';
   } else {
-    document.getElementById('paymentsList').innerHTML = `
-      <table class="data-table" style="font-size:.8rem;">
-        <thead><tr><th>Date</th><th>Receipt</th><th>Amount</th><th>Mode</th><th>Against</th><th>Ref</th><th>By</th></tr></thead>
+    phEl.innerHTML = `
+      <table class="data-table" style="font-size:.78rem;">
+        <thead><tr><th>Date</th><th>Receipt</th><th>Amount</th><th>Mode</th><th>Against</th><th>Ref</th><th>By</th><th>Notes</th></tr></thead>
         <tbody>${payments.map(p=>`<tr>
           <td>${p['Payment Date']||'—'}</td>
           <td>${p['Manual Receipt No']||'—'}</td>
-          <td>₹${Utils.fmtNum(p['Amount'])}</td>
+          <td><strong>₹${Utils.fmtNum(p['Amount'])}</strong></td>
           <td>${p['Mode']||'—'}</td>
           <td><span class="badge ${p['Against']==='CR'?'badge-booked':'badge-avail'}">${p['Against']||'—'}</span></td>
-          <td style="font-size:.72rem;">${p['Reference']||'—'}</td>
-          <td style="font-size:.72rem;">${p['Inputter Name']||'—'}</td>
+          <td style="font-size:.7rem;">${p['Reference']||'—'}</td>
+          <td style="font-size:.7rem;">${p['Inputter Name']||'—'}</td>
+          <td style="font-size:.7rem;color:var(--grey);">${p['Notes']||''}</td>
         </tr>`).join('')}</tbody>
       </table>`;
   }
 
-  // Add payment form (admin only or own bookings)
-  document.getElementById('addPaymentForm').innerHTML = `
+  // Add payment form
+  renderAddPaymentForm('addPaymentForm', receiptNo);
+}
+
+function renderAddPaymentForm(containerId, receiptNo) {
+  document.getElementById(containerId).innerHTML = `
     <div class="card-title" style="font-size:.95rem;margin-bottom:14px;">+ Add Payment</div>
     <div class="form-row">
       <div class="fg"><label>Date</label>
-        <input type="date" id="ap-date" value="${new Date().toISOString().split('T')[0]}"></div>
+        <input type="date" id="ap-date-${containerId}" value="${new Date().toISOString().split('T')[0]}"></div>
       <div class="fg"><label>Manual Receipt No</label>
-        <input type="text" id="ap-rcpt" placeholder="Receipt no."></div>
+        <input type="text" id="ap-rcpt-${containerId}" placeholder="Receipt no."></div>
     </div>
     <div class="form-row">
       <div class="fg"><label>Amount (₹) <span class="req">*</span></label>
-        <input type="number" id="ap-amt" placeholder="e.g. 50000" min="1"></div>
+        <input type="number" id="ap-amt-${containerId}" placeholder="e.g. 50000" min="1"></div>
       <div class="fg"><label>Mode <span class="req">*</span></label>
-        <select id="ap-mode">
+        <select id="ap-mode-${containerId}">
           <option value="">Select…</option>
           <option>Cash</option><option>NEFT / RTGS</option>
           <option>UPI</option><option>Cheque</option><option>DD</option>
         </select></div>
     </div>
     <div class="fg"><label>Reference</label>
-      <input type="text" id="ap-ref" placeholder="UTR / cheque no"></div>
+      <input type="text" id="ap-ref-${containerId}" placeholder="UTR / cheque no"></div>
     <div class="fg"><label>Notes</label>
-      <input type="text" id="ap-notes" placeholder="Optional"></div>
-    <div style="font-size:.76rem;color:var(--grey);margin-bottom:10px;">
-      Cash → counted against CR &nbsp;|&nbsp; All other modes → against RR
-    </div>
-    <button class="btn-submit" id="ap-submit" style="padding:11px;">💾 Save Payment</button>`;
+      <input type="text" id="ap-notes-${containerId}" placeholder="Optional"></div>
+    <div class="pay-hint">Cash → CR &nbsp;|&nbsp; All other modes → RR</div>
+    <button class="btn-submit" id="ap-submit-${containerId}" style="padding:11px;">💾 Save Payment</button>`;
 
-  document.getElementById('ap-submit').addEventListener('click', async () => {
-    const amt  = document.getElementById('ap-amt').value;
-    const mode = document.getElementById('ap-mode').value;
-    if (!amt || !mode) { Utils.toast('Amount and mode required','err'); return; }
-
-    const apBtn = document.getElementById('ap-submit');
-    apBtn.disabled=true; apBtn.textContent='Saving…';
-
-    const dateRaw = document.getElementById('ap-date').value;
-    const dp = dateRaw.split('-');
-    const payDate = dp.length===3 ? `${dp[2]}/${dp[1]}/${dp[0]}` : dateRaw;
-
+  document.getElementById(`ap-submit-${containerId}`).addEventListener('click', async () => {
+    const amt  = document.getElementById(`ap-amt-${containerId}`).value;
+    const mode = document.getElementById(`ap-mode-${containerId}`).value;
+    if (!amt||!mode) { Utils.toast('Amount and mode required','err'); return; }
+    const btn = document.getElementById(`ap-submit-${containerId}`);
+    btn.disabled=true; btn.textContent='Saving…';
     try {
       const res = await API.post({
         action:'addPayment', receiptNo,
-        paymentDate: payDate,
-        manualReceiptNo: document.getElementById('ap-rcpt').value.trim(),
+        paymentDate:      document.getElementById(`ap-date-${containerId}`).value,
+        manualReceiptNo:  document.getElementById(`ap-rcpt-${containerId}`).value.trim(),
         amount: amt, mode,
-        reference: document.getElementById('ap-ref').value.trim(),
-        notes: document.getElementById('ap-notes').value.trim()
+        reference: document.getElementById(`ap-ref-${containerId}`).value.trim(),
+        notes:     document.getElementById(`ap-notes-${containerId}`).value.trim()
       });
       if (res.error) throw new Error(res.error);
-      Utils.toast(`Payment saved — against ${res.against}`,'ok');
-      openPaymentPanel(receiptNo); // refresh panel
+      Utils.toast(`Payment saved — against ${res.against}`, 'ok');
+      openPaymentPanel(receiptNo); // refresh
     } catch(err) {
       Utils.toast(err.message,'err');
-      apBtn.disabled=false; apBtn.textContent='💾 Save Payment';
+      btn.disabled=false; btn.textContent='💾 Save Payment';
     }
   });
 }
@@ -248,13 +295,30 @@ function closePanel() {
 }
 
 async function cancelBooking(receiptNo) {
-  const reason = prompt(`Reason for cancelling ${receiptNo} (required):`);
+  const reason = prompt(`Reason for cancelling ${receiptNo}:`);
   if (!reason||!reason.trim()) return;
-  if (!confirm(`Cancel booking ${receiptNo}?\nPlot will be released back to Available.`)) return;
+  if (!confirm(`Cancel ${receiptNo}? Plot will be released.`)) return;
   try {
     const res = await API.post({ action:'cancelBooking', receiptNo, reason:reason.trim() });
     if (res.error) throw new Error(res.error);
-    Utils.toast('Booking cancelled. Plot released.','ok');
+    Utils.toast('Booking cancelled.','ok');
     await loadBookings();
   } catch(e) { Utils.toast(e.message,'err'); }
+}
+
+// ── Date helpers ──────────────────────────────────
+function parseDateIN(str) {
+  if (!str) return null;
+  const p = String(str).split('/');
+  if (p.length===3) return new Date(p[2], p[1]-1, p[0]);
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+function addDays(d, n) {
+  if (!d) return null;
+  const nd = new Date(d); nd.setDate(nd.getDate()+n); return nd;
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return d.toLocaleDateString('en-IN', { day:'2-digit', month:'2-digit', year:'numeric' });
 }
