@@ -7,6 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+  <script>
+    (function(){
+      try { var s=JSON.parse(localStorage.getItem('pg_session')); if(!s||!s.token){window.location.replace('login.html');} }
+      catch(e){ window.location.replace('login.html'); }
+    })();
+  </script>
 </head>
 <body>
 
@@ -37,8 +43,32 @@
   </div>
 </div>
 
-<div id="toast"></div>
+<!-- Panel overlay -->
+<div class="panel-overlay" id="panelOverlay"></div>
 
+<!-- Slide-in payment panel -->
+<div class="slide-panel" id="slidePanel">
+  <div class="panel-header">
+    <div>
+      <div style="font-size:.7rem;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.06em;">Booking</div>
+      <div id="panelReceiptNo" style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;color:#fff;"></div>
+    </div>
+    <button class="panel-close" id="panelClose">✕</button>
+  </div>
+  <div class="panel-body">
+    <!-- Balances & schedule -->
+    <div id="panelBalances"></div>
+    <!-- Payment history -->
+    <div style="margin-top:20px;">
+      <div class="section-title" style="font-size:.95rem;margin-bottom:10px;">Payment History</div>
+      <div id="paymentsList"></div>
+    </div>
+    <!-- Add payment form -->
+    <div id="addPaymentForm" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
 <script src="js/auth.js"></script>

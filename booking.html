@@ -7,13 +7,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
-  <!-- Auth guard: runs instantly before body renders -->
   <script>
     (function(){
-      try {
-        var s = JSON.parse(localStorage.getItem('pg_session'));
-        if (!s || !s.token) { window.location.replace('login.html'); }
-      } catch(e) { window.location.replace('login.html'); }
+      try { var s=JSON.parse(localStorage.getItem('pg_session')); if(!s||!s.token){window.location.replace('login.html');} }
+      catch(e){ window.location.replace('login.html'); }
     })();
   </script>
 </head>
@@ -21,32 +18,25 @@
 
 <div class="page-wrap">
   <div class="page-title">Book a Plot</div>
-  <div class="page-sub">Select an available plot, fill in customer details and confirm</div>
+  <div class="page-sub">Select a plot, enter rates and customer details</div>
 
   <div class="booking-layout">
-
     <!-- Left column -->
     <div>
+
       <!-- Plot picker -->
       <div class="card" style="margin-bottom:18px;">
         <div class="card-title">Select a Plot</div>
-
         <div class="picker-tabs">
           <button class="picker-tab active" data-view="grid">☰ Grid View</button>
           <button class="picker-tab" data-view="map">🗺 Map View</button>
         </div>
-
-        <!-- Grid -->
         <div id="pickerGrid" class="picker-panel">
           <div style="font-size:.8rem;color:var(--grey);margin:10px 0 8px;">Tap any green plot to select</div>
-          <div id="bplotGrid" class="bplot-grid">
-            <div class="loading-block"><div class="spinner"></div></div>
-          </div>
+          <div id="bplotGrid" class="bplot-grid"><div class="loading-block"><div class="spinner"></div></div></div>
         </div>
-
-        <!-- Map -->
         <div id="pickerMap" class="picker-panel" style="display:none;">
-          <div style="font-size:.8rem;color:var(--grey);margin:10px 0 8px;">Tap a green plot on the map · Scroll/pinch to zoom</div>
+          <div style="font-size:.8rem;color:var(--grey);margin:10px 0 8px;">Tap a green plot · Scroll to zoom</div>
           <div class="map-legend">
             <span class="ml ml-av">■ Available</span>
             <span class="ml ml-bk">■ Booked</span>
@@ -59,12 +49,54 @@
         </div>
       </div>
 
+      <!-- Rate calculator -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">Rate Calculator</div>
+        <div class="card-sub">Enter BR and RR — CR and amounts calculate automatically</div>
+        <div class="form-row">
+          <div class="fg">
+            <label>BR (per sqft) <span class="req">*</span></label>
+            <input type="number" id="f-br" placeholder="e.g. 2500" min="0" step="1">
+          </div>
+          <div class="fg">
+            <label>RR (per sqft) <span class="req">*</span></label>
+            <input type="number" id="f-rr" placeholder="e.g. 1800" min="0" step="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="fg">
+            <label>CR (per sqft) <span class="hint">auto = BR − RR</span></label>
+            <input type="number" id="f-cr" readonly placeholder="—" style="background:var(--mist);color:var(--grey);">
+          </div>
+          <div class="fg">
+            <label>Area SqFt</label>
+            <input type="text" id="f-area" readonly placeholder="Select a plot first" style="background:var(--mist);color:var(--grey);">
+          </div>
+        </div>
+        <!-- Amount summary strip -->
+        <div class="rate-summary" id="rateSummary" style="display:none;">
+          <div class="rs-item">
+            <div class="rs-label">BR Amount</div>
+            <div class="rs-val" id="rs-br">—</div>
+          </div>
+          <div class="rs-sep">+</div>
+          <div class="rs-item">
+            <div class="rs-label">RR Amount</div>
+            <div class="rs-val rs-rr" id="rs-rr">—</div>
+          </div>
+          <div class="rs-sep">+</div>
+          <div class="rs-item">
+            <div class="rs-label">CR Amount</div>
+            <div class="rs-val rs-cr" id="rs-cr">—</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Customer form -->
       <div class="card">
         <div class="card-title">Customer Details</div>
         <div class="card-sub">Fields marked <span style="color:var(--red)">*</span> are required</div>
         <form id="bookingForm">
-
           <div class="form-row">
             <div class="fg">
               <label>Full Name <span class="req">*</span></label>
@@ -76,15 +108,9 @@
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="fg">
-              <label>Aadhaar Number</label>
-              <input type="text" id="f-aadhaar" placeholder="XXXX XXXX XXXX" maxlength="14">
-            </div>
-            <div class="fg">
-              <label>PAN Number</label>
-              <input type="text" id="f-pan" placeholder="ABCDE1234F" maxlength="10">
-            </div>
+          <div class="fg">
+            <label>Aadhaar Number</label>
+            <input type="text" id="f-aadhaar" placeholder="XXXX XXXX XXXX" maxlength="14">
           </div>
 
           <div class="fg">
@@ -94,16 +120,20 @@
 
           <div class="form-row">
             <div class="fg">
-              <label>Receipt Number 1 <span class="hint">(physical receipt)</span></label>
-              <input type="text" id="f-receipt1" placeholder="Manual receipt no.">
+              <label>Booking Date <span class="req">*</span></label>
+              <input type="date" id="f-bookdate" required>
             </div>
             <div class="fg">
-              <label>Token Amount (₹) <span class="req">*</span></label>
-              <input type="number" id="f-token" required placeholder="e.g. 50000" min="1">
+              <label>Receipt Number 1 <span class="hint">(physical)</span></label>
+              <input type="text" id="f-receipt1" placeholder="Manual receipt no.">
             </div>
           </div>
 
           <div class="form-row">
+            <div class="fg">
+              <label>Token Amount (₹) <span class="req">*</span></label>
+              <input type="number" id="f-token" required placeholder="e.g. 50000" min="1">
+            </div>
             <div class="fg">
               <label>Payment Mode <span class="req">*</span></label>
               <select id="f-paymode" required>
@@ -115,10 +145,11 @@
                 <option>DD</option>
               </select>
             </div>
-            <div class="fg">
-              <label>Payment Reference</label>
-              <input type="text" id="f-payref" placeholder="UTR / cheque no / UPI ref">
-            </div>
+          </div>
+
+          <div class="fg">
+            <label>Payment Reference</label>
+            <input type="text" id="f-payref" placeholder="UTR / cheque no / UPI ref">
           </div>
 
           <div class="fg">
@@ -131,23 +162,39 @@
             <textarea id="f-remarks" placeholder="Any additional notes…"></textarea>
           </div>
 
-          <button type="submit" class="btn-submit" id="submitBtn" disabled>
-            📋 Confirm Booking
-          </button>
+          <button type="submit" class="btn-submit" id="submitBtn" disabled>📋 Confirm Booking</button>
         </form>
       </div>
     </div>
 
     <!-- Sidebar -->
     <div class="booking-sidebar">
-      <div class="plot-summary">
+      <div class="plot-summary" id="plotSummaryBox">
         <div class="ps-title">Selected Plot</div>
-        <div id="psSummary">
-          <div class="ps-empty">No plot selected.<br>Choose from the grid above.</div>
+        <div id="psSummary"><div class="ps-empty">No plot selected.<br>Choose from the grid above.</div></div>
+      </div>
+
+      <!-- Installment breakdown — shown after rates entered -->
+      <div class="card" id="installmentBox" style="margin-top:14px;display:none;">
+        <div class="card-title" style="font-size:1rem;">Installment Schedule</div>
+        <div class="inst-section">
+          <div class="inst-head rr-head">RR Installments</div>
+          <div class="inst-row"><span>Part 1 (35%) · 30 days</span><span id="rr-p1">—</span></div>
+          <div class="inst-row"><span>Part 2 (35%) · 60 days</span><span id="rr-p2">—</span></div>
+          <div class="inst-row"><span>Part 3 (30%) · 90 days</span><span id="rr-p3">—</span></div>
+          <div class="inst-row inst-bal"><span>Token deducted</span><span id="rr-tok">—</span></div>
+          <div class="inst-row inst-total"><span>RR Balance</span><span id="rr-bal">—</span></div>
+        </div>
+        <div class="inst-section" style="margin-top:12px;">
+          <div class="inst-head cr-head">CR Installments</div>
+          <div class="inst-row"><span>Part 1 (35%) · 30 days</span><span id="cr-p1">—</span></div>
+          <div class="inst-row"><span>Part 2 (35%) · 60 days</span><span id="cr-p2">—</span></div>
+          <div class="inst-row"><span>Part 3 (30%) · 90 days</span><span id="cr-p3">—</span></div>
+          <div class="inst-row inst-bal"><span>Token deducted</span><span id="cr-tok">—</span></div>
+          <div class="inst-row inst-total"><span>CR Balance</span><span id="cr-bal">—</span></div>
         </div>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -166,7 +213,6 @@
 </div>
 
 <div id="toast"></div>
-
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
 <script src="js/auth.js"></script>
