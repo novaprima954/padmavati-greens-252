@@ -79,28 +79,44 @@ function setupRateCalc() {
       document.getElementById('rs-cr').textContent = '₹'+Utils.fmtNum(crAmt);
       document.getElementById('rateSummary').style.display = 'flex';
 
-      // Installments
-      const tok     = parseFloat(tokEl.value) || 0;
-      const isCash  = modeEl.value === 'Cash';
-      const tokRR   = isCash ? 0 : tok;
-      const tokCR   = isCash ? tok : 0;
+      // Installments — 10 / 75 / 165 days with exact dates
+      const tok    = parseFloat(tokEl.value) || 0;
+      const isCash = modeEl.value === 'Cash';
+      const tokRR  = isCash ? 0 : tok;
+      const tokCR  = isCash ? tok : 0;
+      const tokBR  = tok;
 
-      const rrP1 = Math.round(rrAmt * 0.35);
-      const rrP2 = Math.round(rrAmt * 0.35);
-      const rrP3 = rrAmt - rrP1 - rrP2;
-      const crP1 = Math.round(crAmt * 0.35);
-      const crP2 = Math.round(crAmt * 0.35);
-      const crP3 = crAmt - crP1 - crP2;
+      const bdRaw  = document.getElementById('f-bookdate').value;
+      const bdDate = bdRaw ? new Date(bdRaw) : new Date();
+      function addDaysLocal(d, n) { const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
+      function fmtDateLocal(d)    { return d.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+      const d10  = fmtDateLocal(addDaysLocal(bdDate,10));
+      const d75  = fmtDateLocal(addDaysLocal(bdDate,75));
+      const d165 = fmtDateLocal(addDaysLocal(bdDate,165));
 
-      document.getElementById('rr-p1').textContent = '₹'+Utils.fmtNum(rrP1);
-      document.getElementById('rr-p2').textContent = '₹'+Utils.fmtNum(rrP2);
-      document.getElementById('rr-p3').textContent = '₹'+Utils.fmtNum(rrP3);
+      const br1=Math.round(brAmt*.35), br2=Math.round(brAmt*.35), br3=brAmt-br1-br2;
+      const rr1=Math.round(rrAmt*.35), rr2=Math.round(rrAmt*.35), rr3=rrAmt-rr1-rr2;
+      const cr1=Math.round(crAmt*.35), cr2=Math.round(crAmt*.35), cr3=crAmt-cr1-cr2;
+
+      // Store for WhatsApp share
+      window._pgSchedule = { brAmt,rrAmt,crAmt,br1,br2,br3,rr1,rr2,rr3,cr1,cr2,cr3,d10,d75,d165,tok,tokRR,tokCR,tokBR };
+
+      // BR
+      document.getElementById('br-p1').textContent = `₹${Utils.fmtNum(br1)} · ${d10}`;
+      document.getElementById('br-p2').textContent = `₹${Utils.fmtNum(br2)} · ${d75}`;
+      document.getElementById('br-p3').textContent = `₹${Utils.fmtNum(br3)} · ${d165}`;
+      document.getElementById('br-tok').textContent = tokBR > 0 ? '−₹'+Utils.fmtNum(tokBR) : '—';
+      document.getElementById('br-bal').textContent = '₹'+Utils.fmtNum(Math.max(0, brAmt - tokBR));
+      // RR
+      document.getElementById('rr-p1').textContent = `₹${Utils.fmtNum(rr1)} · ${d10}`;
+      document.getElementById('rr-p2').textContent = `₹${Utils.fmtNum(rr2)} · ${d75}`;
+      document.getElementById('rr-p3').textContent = `₹${Utils.fmtNum(rr3)} · ${d165}`;
       document.getElementById('rr-tok').textContent = tokRR > 0 ? '−₹'+Utils.fmtNum(tokRR) : '—';
       document.getElementById('rr-bal').textContent = '₹'+Utils.fmtNum(Math.max(0, rrAmt - tokRR));
-
-      document.getElementById('cr-p1').textContent = '₹'+Utils.fmtNum(crP1);
-      document.getElementById('cr-p2').textContent = '₹'+Utils.fmtNum(crP2);
-      document.getElementById('cr-p3').textContent = '₹'+Utils.fmtNum(crP3);
+      // CR
+      document.getElementById('cr-p1').textContent = `₹${Utils.fmtNum(cr1)} · ${d10}`;
+      document.getElementById('cr-p2').textContent = `₹${Utils.fmtNum(cr2)} · ${d75}`;
+      document.getElementById('cr-p3').textContent = `₹${Utils.fmtNum(cr3)} · ${d165}`;
       document.getElementById('cr-tok').textContent = tokCR > 0 ? '−₹'+Utils.fmtNum(tokCR) : '—';
       document.getElementById('cr-bal').textContent = '₹'+Utils.fmtNum(Math.max(0, crAmt - tokCR));
 
@@ -108,6 +124,7 @@ function setupRateCalc() {
     } else {
       document.getElementById('rateSummary').style.display = 'none';
       document.getElementById('installmentBox').style.display = 'none';
+      window._pgSchedule = null;
     }
   }
 
@@ -115,6 +132,7 @@ function setupRateCalc() {
   rrEl.addEventListener('input', recalc);
   document.getElementById('f-token').addEventListener('input', recalc);
   document.getElementById('f-paymode').addEventListener('change', recalc);
+  document.getElementById('f-bookdate').addEventListener('change', recalc);
 }
 
 // ── Load plots ────────────────────────────────────
@@ -291,15 +309,42 @@ async function submitBooking(e) {
 function shareWhatsApp() {
   if (!lastBooking) return;
   const b = lastBooking;
+  const s = window._pgSchedule;
+
+  let scheduleText = '';
+  if (s) {
+    const tokBRLine = s.tokBR>0 ? `   Token paid: −₹${Utils.fmtNum(s.tokBR)}\n` : '';
+    const tokRRLine = s.tokRR>0 ? `   Token paid: −₹${Utils.fmtNum(s.tokRR)}\n` : '';
+    const tokCRLine = s.tokCR>0 ? `   Token paid: −₹${Utils.fmtNum(s.tokCR)}\n` : '';
+    scheduleText =
+      `\n📊 *Installment Schedule*\n`+
+      `\n*BR Amount: ₹${Utils.fmtNum(s.brAmt)}*\n`+
+      `  Part 1 (35%) · ${s.d10}: ₹${Utils.fmtNum(s.br1)}\n`+
+      `  Part 2 (35%) · ${s.d75}: ₹${Utils.fmtNum(s.br2)}\n`+
+      `  Part 3 (30%) · ${s.d165}: ₹${Utils.fmtNum(s.br3)}\n`+
+      tokBRLine+
+      `\n*RR Amount: ₹${Utils.fmtNum(s.rrAmt)}*\n`+
+      `  Part 1 (35%) · ${s.d10}: ₹${Utils.fmtNum(s.rr1)}\n`+
+      `  Part 2 (35%) · ${s.d75}: ₹${Utils.fmtNum(s.rr2)}\n`+
+      `  Part 3 (30%) · ${s.d165}: ₹${Utils.fmtNum(s.rr3)}\n`+
+      tokRRLine+
+      `\n*CR Amount: ₹${Utils.fmtNum(s.crAmt)}*\n`+
+      `  Part 1 (35%) · ${s.d10}: ₹${Utils.fmtNum(s.cr1)}\n`+
+      `  Part 2 (35%) · ${s.d75}: ₹${Utils.fmtNum(s.cr2)}\n`+
+      `  Part 3 (30%) · ${s.d165}: ₹${Utils.fmtNum(s.cr3)}\n`+
+      tokCRLine;
+  }
+
   const msg =
     `🌿 *Padmavati Greens* – Booking Confirmation\n\n`+
     `📋 Receipt No: ${b.receiptNo}\n`+
     `👤 Name: ${b.customerName}\n`+
     `📱 Mobile: ${b.phone||'—'}\n`+
-    `📍 Plot No: ${b.plotNo}\n`+
+    `📍 Plot No: ${b.plotNo} · ${b.areaSqft||''} SqFt\n`+
     `💰 Token Amount: ₹${Utils.fmtNum(b.tokenAmount)}\n`+
     `💳 Payment Mode: ${b.paymentMode||'—'}\n`+
-    `📅 Date: ${b.bookingDate}\n\n`+
-    `Layout No. 712 · Survey No. 274 · Yavatmal`;
+    `📅 Booking Date: ${b.bookingDate}`+
+    scheduleText+
+    `\n\nLayout No. 712 · Survey No. 274 · Yavatmal`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
