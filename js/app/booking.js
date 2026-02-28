@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('f-bookdate').addEventListener('change', recalcSummary);
   document.getElementById('f-token').addEventListener('input', () => { updateTokenSplit(); recalcSummary(); });
-  document.getElementById('addPlotBtn').addEventListener('click', addPlotRow);
+  // Plot selection via grid — no addPlotBtn needed
   document.getElementById('bookBtn').addEventListener('click', submitBooking);
 
   document.getElementById('newBookingBtn').addEventListener('click', () => {
@@ -44,8 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     resetForm();
   });
 
-  // Add first plot row
-  addPlotRow();
+  // Plots added via grid clicks
 });
 
 async function loadAvailablePlots() {
@@ -53,50 +52,75 @@ async function loadAvailablePlots() {
     const data = await API.get({ action:'getPlots' });
     if (data.error) throw new Error(data.error);
     availablePlots = (data.plots || []).filter(p => p['Status'] === 'Available');
-    // Refresh plot dropdowns
-    document.querySelectorAll('.plot-select').forEach(sel => populatePlotSelect(sel));
-  } catch(e) { Utils.toast('Could not load plots: '+e.message, 'err'); }
+    renderPlotGrid();
+  } catch(e) {
+    document.getElementById('plotPickerStatus').textContent = 'Error loading plots';
+    Utils.toast('Could not load plots: '+e.message, 'err');
+  }
 }
 
-function populatePlotSelect(sel) {
-  const current = sel.value;
-  const usedPlots = plotEntries.filter(e => e.id !== sel.dataset.entryId).map(e => e.plotNo);
-  sel.innerHTML = '<option value="">Select plot…</option>' +
-    availablePlots
-      .filter(p => !usedPlots.includes(String(p['Plot No'])) || String(p['Plot No'])===current)
-      .map(p => `<option value="${p['Plot No']}" data-area="${p['Area SqFt']||0}">${p['Plot No']} — ${p['Area SqFt']||0} SqFt</option>`)
-      .join('');
-  if (current) sel.value = current;
+// Status colours
+const STATUS_COLOR = { Available:'#e8f5e9', Booked:'#ffebee', Reserved:'#fff9c4' };
+
+function renderPlotGrid() {
+  const grid   = document.getElementById('plotPickerGrid');
+  const status = document.getElementById('plotPickerStatus');
+  status.textContent = availablePlots.length + ' available';
+
+  if (!availablePlots.length) {
+    grid.innerHTML = '<div style="color:var(--grey);padding:12px;">No available plots</div>';
+    return;
+  }
+
+  grid.innerHTML = availablePlots.map(p => {
+    const plotNo = String(p['Plot No']);
+    const area   = p['Area SqFt'] || '';
+    return `<div class="pgrid-cell" data-plot="${plotNo}" data-area="${area}" title="Plot ${plotNo} · ${area} SqFt">
+      <div class="pgrid-no">${plotNo}</div>
+      <div class="pgrid-area">${area}</div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.pgrid-cell').forEach(cell => {
+    cell.addEventListener('click', () => togglePlotFromGrid(cell));
+  });
 }
 
-function addPlotRow() {
-  const id = ++plotCounter;
-  plotEntries.push({ id, plotNo:'', br:0, rr:0, area:0, brAmt:0, rrAmt:0, crAmt:0 });
+function togglePlotFromGrid(cell) {
+  const plotNo = cell.dataset.plot;
+  const area   = parseFloat(cell.dataset.area)||0;
+  const exists = plotEntries.find(e => e.plotNo === plotNo);
 
+  if (exists) {
+    // Deselect — remove rate card
+    removePlotByNo(plotNo);
+    cell.classList.remove('pgrid-selected');
+  } else {
+    // Select — add rate card
+    const id = ++plotCounter;
+    plotEntries.push({ id, plotNo, br:0, rr:0, area, brAmt:0, rrAmt:0, crAmt:0 });
+    cell.classList.add('pgrid-selected');
+    addRateCard(id, plotNo, area);
+    updateTokenSplit();
+    recalcSummary();
+  }
+}
+
+function addRateCard(id, plotNo, area) {
   const container = document.getElementById('plotsContainer');
   const div = document.createElement('div');
   div.className = 'plot-entry-card';
   div.dataset.entryId = id;
+  div.dataset.plotNo  = plotNo;
   div.innerHTML = `
     <div class="pec-header">
-      <span class="pec-num">Plot ${plotEntries.length}</span>
-      ${plotEntries.length > 1 ? `<button type="button" class="pec-remove" data-id="${id}">✕ Remove</button>` : ''}
-    </div>
-    <div class="form-row">
-      <div class="fg"><label>Plot No <span class="req">*</span></label>
-        <select class="plot-select" data-entry-id="${id}">
-          <option value="">Loading…</option>
-        </select></div>
-      <div class="fg pec-area-wrap">
-        <label>Area</label>
-        <div class="pec-area" id="pec-area-${id}">—</div>
-      </div>
+      <span class="pec-num">Plot ${plotNo} &nbsp;·&nbsp; ${area} SqFt</span>
     </div>
     <div class="form-row">
       <div class="fg"><label>BR Rate (₹/sqft) <span class="req">*</span></label>
-        <input type="number" class="rate-br" data-entry-id="${id}" placeholder="e.g. 295"></div>
+        <input type="number" class="rate-br" data-entry-id="${id}" placeholder="e.g. 295" min="0"></div>
       <div class="fg"><label>RR Rate (₹/sqft) <span class="req">*</span></label>
-        <input type="number" class="rate-rr" data-entry-id="${id}" placeholder="e.g. 170"></div>
+        <input type="number" class="rate-rr" data-entry-id="${id}" placeholder="e.g. 170" min="0"></div>
     </div>
     <div class="pec-amounts" id="pec-amounts-${id}" style="display:none;">
       <div class="pec-amt-chip br-chip">BR ₹<span id="pec-br-${id}">0</span></div>
@@ -105,50 +129,19 @@ function addPlotRow() {
     </div>`;
   container.appendChild(div);
 
-  const sel = div.querySelector('.plot-select');
-  populatePlotSelect(sel);
-  sel.addEventListener('change', () => {
-    const entry = plotEntries.find(e => e.id === id);
-    const opt = sel.selectedOptions[0];
-    entry.plotNo = sel.value;
-    entry.area   = parseFloat(opt ? opt.dataset.area : 0) || 0;
-    document.getElementById(`pec-area-${id}`).textContent = entry.area ? entry.area+' SqFt' : '—';
-    recalcEntry(id);
-    refreshAllSelects();
-    updateTokenSplit();
-  });
-
   div.querySelectorAll('.rate-br, .rate-rr').forEach(inp => {
     inp.addEventListener('input', () => { recalcEntry(id); recalcSummary(); });
   });
-
-  if (div.querySelector('.pec-remove')) {
-    div.querySelector('.pec-remove').addEventListener('click', () => removePlotRow(id));
-  }
-
-  populatePlotSelect(sel);
-  renumberPlots();
 }
 
-function removePlotRow(id) {
-  plotEntries = plotEntries.filter(e => e.id !== id);
-  document.querySelector(`.plot-entry-card[data-entry-id="${id}"]`).remove();
-  refreshAllSelects();
-  renumberPlots();
+function removePlotByNo(plotNo) {
+  const entry = plotEntries.find(e => e.plotNo === plotNo);
+  if (!entry) return;
+  plotEntries = plotEntries.filter(e => e.plotNo !== plotNo);
+  const card  = document.querySelector(`.plot-entry-card[data-plot-no="${plotNo}"]`);
+  if (card) card.remove();
   updateTokenSplit();
   recalcSummary();
-}
-
-function renumberPlots() {
-  document.querySelectorAll('.plot-entry-card').forEach((card, i) => {
-    card.querySelector('.pec-num').textContent = 'Plot '+(i+1);
-  });
-}
-
-function refreshAllSelects() {
-  document.querySelectorAll('.plot-select').forEach(sel => {
-    sel.dataset.entryId && populatePlotSelect(sel);
-  });
 }
 
 function recalcEntry(id) {
@@ -306,12 +299,14 @@ async function submitBooking() {
   const token    = parseFloat(document.getElementById('f-token').value)||0;
   const valid    = plotEntries.filter(e => e.plotNo && e.brAmt > 0);
 
-  if (!name)     { Utils.toast('Customer name required','err'); return; }
-  if (!phone)    { Utils.toast('Phone required','err'); return; }
-  if (!bookdate) { Utils.toast('Booking date required','err'); return; }
-  if (!receipt1) { Utils.toast('Manual receipt number required','err'); return; }
-  if (!paymode)  { Utils.toast('Payment mode required','err'); return; }
-  if (!valid.length) { Utils.toast('Add at least one plot with rates','err'); return; }
+  const refBy = document.getElementById('f-ref').value.trim();
+  if (!name)              { Utils.toast('Customer name required','err'); return; }
+  if (!/^[0-9]{10}$/.test(phone)) { Utils.toast('Phone must be exactly 10 digits','err'); return; }
+  if (!refBy)             { Utils.toast('Referred By is mandatory','err'); return; }
+  if (!bookdate)          { Utils.toast('Booking date required','err'); return; }
+  if (!receipt1)          { Utils.toast('Manual receipt number required','err'); return; }
+  if (!paymode)           { Utils.toast('Payment mode required','err'); return; }
+  if (!valid.length)      { Utils.toast('Select at least one plot with rates','err'); return; }
 
   const tokenSplits = getTokenSplits();
 

@@ -3,10 +3,22 @@ Auth.requireAuth();
 
 document.addEventListener('DOMContentLoaded', () => {
   Header.init('status');
+
+  // Handle ?receipt= URL parameter (from bookings page links)
+  const urlParams = new URLSearchParams(window.location.search);
+  const rcptParam = urlParams.get('receipt');
+  if (rcptParam) {
+    document.getElementById('searchType').value = 'receipt';
+    document.getElementById('searchInput').value = rcptParam;
+    // update placeholder then search
+    document.getElementById('searchInput').placeholder = 'e.g. PG-2025-123456';
+    setTimeout(() => doSearch(), 300);
+  }
   const placeholders = {
-    name:  'e.g. Ramesh Sharma',
-    phone: 'e.g. 9876543210',
-    plot:  'e.g. 12B'
+    name:    'e.g. Ramesh Sharma',
+    phone:   'e.g. 9876543210',
+    plot:    'e.g. 12B',
+    receipt: 'e.g. PG-2025-123456'
   };
   document.getElementById('searchType').addEventListener('change', () => {
     document.getElementById('receiptInput').placeholder =
@@ -40,9 +52,10 @@ async function doSearch() {
       if (data.error) throw new Error(data.error);
       const q = query.toLowerCase();
       const matches = data.bookings.filter(b =>
-        type==='name'  ? (b['Customer Full Name']||'').toLowerCase().includes(q) :
-        type==='phone' ? (b['Phone Number']||'').includes(q) :
-        type==='plot'  ? String(b['Plot No']||'').toLowerCase()===q : false
+        type==='name'    ? (b['Customer Full Name']||'').toLowerCase().includes(q) :
+        type==='phone'   ? (b['Phone Number']||'').includes(q) :
+        type==='plot'    ? String(b['Plot No']||'').toLowerCase()===q :
+        type==='receipt' ? String(b['Receipt No']||'').toLowerCase()===q : false
       );
       if (!matches.length) {
         multi.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><p>No bookings found for "${query}"</p></div>`;

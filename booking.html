@@ -21,14 +21,14 @@
         <div class="card-title">Customer Information</div>
         <div class="form-row">
           <div class="fg"><label>Full Name <span class="req">*</span></label>
-            <input type="text" id="f-name" placeholder="e.g. Ramesh Sharma"></div>
+            <input type="text" id="f-name" placeholder="As per Aadhaar"></div>
           <div class="fg"><label>Phone <span class="req">*</span></label>
-            <input type="tel" id="f-phone" placeholder="10-digit mobile"></div>
+            <input type="tel" id="f-phone" placeholder="10-digit mobile" maxlength="10" inputmode="numeric" pattern="[0-9]{10}"></div>
         </div>
         <div class="form-row">
           <div class="fg"><label>Aadhaar Number</label>
             <input type="text" id="f-aadhaar" placeholder="12-digit"></div>
-          <div class="fg"><label>Referred By</label>
+          <div class="fg"><label>Referred By <span class="req">*</span></label>
             <input type="text" id="f-ref" placeholder="Name or agent"></div>
         </div>
         <div class="fg"><label>Address</label>
@@ -61,10 +61,13 @@
       <!-- Plots Section -->
       <div class="card" style="margin-bottom:14px;">
         <div class="card-title-row">
-          <div class="card-title" style="margin:0;">Plots</div>
-          <button type="button" class="btn-add-plot" id="addPlotBtn">+ Add Plot</button>
+          <div class="card-title" style="margin:0;">Select Plots</div>
+          <div id="plotPickerStatus" class="plot-picker-status">Loading plots…</div>
         </div>
-        <div id="plotsContainer"></div>
+        <!-- Grid picker -->
+        <div id="plotPickerGrid" class="plot-picker-grid"></div>
+        <!-- Rate inputs for selected plots -->
+        <div id="plotsContainer" style="margin-top:14px;"></div>
       </div>
 
       <!-- Token -->

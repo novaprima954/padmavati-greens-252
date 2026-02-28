@@ -11,9 +11,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set today's date
   document.getElementById('apDate').value = new Date().toISOString().split('T')[0];
 
-  // Step 1
+  // Step 1 — live search with debounce
+  let searchTimer = null;
   document.getElementById('apSearchBtn').addEventListener('click', searchCustomer);
-  document.getElementById('apCustomerName').addEventListener('keydown', e => { if(e.key==='Enter') searchCustomer(); });
+  document.getElementById('apCustomerName').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    const val = document.getElementById('apCustomerName').value.trim();
+    if (val.length < 2) {
+      document.getElementById('apCustomerResults').innerHTML = '';
+      return;
+    }
+    searchTimer = setTimeout(searchCustomer, 400);
+  });
+  document.getElementById('apCustomerName').addEventListener('keydown', e => { if(e.key==='Enter') { clearTimeout(searchTimer); searchCustomer(); } });
 
   // Step 2
   document.getElementById('apChangeCustomer').addEventListener('click', resetToStep1);
