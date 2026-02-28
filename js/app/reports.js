@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('duesLoadBtn').addEventListener('click', () => loadDues());
   document.getElementById('excessLoadBtn').addEventListener('click', () => loadExcess());
+  document.getElementById('paymentsLoadBtn').addEventListener('click', () => loadPayments());
 
   // Show/hide upcoming days when type changes
   document.getElementById('duesType').addEventListener('change', () => {
@@ -74,7 +75,7 @@ function openReport(report) {
 }
 
 // ── LEDGER ────────────────────────────────────────
-async function loadLedger() {
+async function loadLedger(phone) {
   const name = document.getElementById('ledgerName').value.trim();
   if (!name) { Utils.toast('Enter a customer name','err'); return; }
 
@@ -82,32 +83,100 @@ async function loadLedger() {
   out.innerHTML = '<div class="loading-block"><div class="spinner"></div>Loading…</div>';
 
   try {
-    const data = await API.get({ action:'getReportLedger', name });
+    const params = { action:'getReportLedger', name };
+    if (phone) params.phone = phone;
+    const data = await API.get(params);
     if (data.error) throw new Error(data.error);
-    renderLedger(data);
+
+    if (data.mode === 'pick') {
+      // Multiple distinct customers — show picker
+      renderLedgerPicker(data.customers, name);
+    } else {
+      renderLedger(data);
+    }
   } catch(e) {
     out.innerHTML = `<div class="empty-state"><div class="empty-icon">📒</div><p>${e.message}</p></div>`;
   }
 }
 
+function renderLedgerPicker(customers, name) {
+  const out = document.getElementById('reportOutput');
+  document.getElementById('reportViewSub').textContent = customers.length + ' customers found — select one';
+  out.innerHTML = `
+    <div class="ledger-pick-title">${customers.length} customers match "${name}" — select one to view their ledger:</div>
+    ${customers.map((cu,i) => `
+      <div class="ap-cust-row" style="cursor:pointer;" data-phone="${cu.phone}">
+        <div class="ap-cust-row-info">
+          <div class="ap-cust-row-name">${cu.name}</div>
+          <div class="ap-cust-row-phone">${cu.phone} &nbsp;·&nbsp; ${cu.plotCount} plot${cu.plotCount>1?'s':''}</div>
+        </div>
+        <button class="btn-select-cust" data-phone="${cu.phone}">View Ledger →</button>
+      </div>`).join('')}`;
+
+  out.querySelectorAll('.btn-select-cust').forEach(btn => {
+    btn.addEventListener('click', () => loadLedger(btn.dataset.phone));
+  });
+}
+
 function renderLedger(data) {
-  const { customerName, rows, totals } = data;
+  const { customerName, phone, rows, totals } = data;
+  document.getElementById('reportViewSub').textContent =
+    `${customerName} · ${phone||''} · ${rows.length} plot${rows.length>1?'s':''}`;
+
+  const pctLabel = ['1 · 35%','2 · 35%','3 · 30%'];
+
+  function instTable(insts, catKey) {
+    // catKey: 'rr', 'cr', 'br'
+    const cls = {rr:'inst-rr', cr:'inst-cr', br:'inst-br'}[catKey];
+    const lbl = catKey.toUpperCase();
+    return `<div class="inst-mini ${cls}">
+      <div class="inst-mini-title">${lbl} Schedule</div>
+      <div class="inst-mini-row hdr"><span>Part</span><span>Due</span><span>Total</span><span>Paid</span><span>Due</span></div>
+      ${insts.map((inst,i) => {
+        const d = inst[catKey];
+        const nc = d.due===0 ? 'net-clear' : 'net-due';
+        return `<div class="inst-mini-row">
+          <span>${pctLabel[i]}</span>
+          <span>${inst.dueDate}</span>
+          <span>₹${Utils.fmtNum(d.gross)}</span>
+          <span style="color:#2e7d32;">₹${Utils.fmtNum(d.paid)}</span>
+          <span class="${nc}">₹${Utils.fmtNum(d.due)}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  function payHistTable(payments) {
+    if (!payments || !payments.length) return '<div style="color:var(--grey);font-size:.8rem;padding:8px 0;">No payments recorded</div>';
+    return `<table class="sch-table" style="font-size:.78rem;">
+      <thead><tr><th>Date</th><th>Manual Rcpt</th><th>Amount</th><th>Mode</th><th>Against</th><th>Ref</th><th>Notes</th><th>By</th></tr></thead>
+      <tbody>
+        ${payments.map(p=>`<tr>
+          <td>${p.date}</td>
+          <td>${p.receipt||'—'}</td>
+          <td><strong>₹${Utils.fmtNum(p.amount)}</strong></td>
+          <td>${p.mode}</td>
+          <td><span class="badge ${p.against==='CR'?'badge-booked':'badge-avail'}" style="font-size:.65rem;">${p.against}</span></td>
+          <td style="font-size:.7rem;">${p.ref||'—'}</td>
+          <td style="font-size:.7rem;color:var(--grey);">${p.notes||''}</td>
+          <td style="font-size:.7rem;">${p.by||'—'}</td>
+        </tr>`).join('')}
+        <tr style="background:var(--mist);font-weight:700;">
+          <td colspan="2">Total Paid</td>
+          <td>₹${Utils.fmtNum(payments.reduce((s,p)=>s+p.amount,0))}</td>
+          <td colspan="5"></td>
+        </tr>
+      </tbody>
+    </table>`;
+  }
 
   let html = `
     <div class="ledger-header">
       <div class="ledger-name">${customerName}</div>
-      <div class="ledger-sub">${rows.length} plot${rows.length>1?'s':''} · ${rows.filter(r=>r.status==='Active').length} active</div>
+      <div class="ledger-sub">${phone||''} · ${rows.length} plot${rows.length>1?'s':''} · ${rows.filter(r=>r.status==='Active').length} active</div>
     </div>`;
 
-  rows.forEach((r, idx) => {
-    const bd     = parseDateIN(r.bookingDateRaw);
-    const d10    = fmtDate(addDays(bd,10));
-    const d75    = fmtDate(addDays(bd,75));
-    const d165   = fmtDate(addDays(bd,165));
-    const br1=Math.round(r.brAmt*.35), br2=Math.round(r.brAmt*.35), br3=r.brAmt-br1-br2;
-    const rr1=Math.round(r.rrAmt*.35), rr2=Math.round(r.rrAmt*.35), rr3=r.rrAmt-rr1-rr2;
-    const cr1=Math.round(r.crAmt*.35), cr2=Math.round(r.crAmt*.35), cr3=r.crAmt-cr1-cr2;
-
+  rows.forEach(r => {
     html += `
       <div class="ledger-plot-card">
         <div class="lpc-head">
@@ -121,7 +190,7 @@ function renderLedger(data) {
           </div>
         </div>
 
-        <!-- Balance row -->
+        <!-- Balance summary -->
         <div class="lpc-bal-row">
           <div class="lpc-bal-cell lpc-br">
             <div class="lpc-bal-label">BR</div>
@@ -143,17 +212,20 @@ function renderLedger(data) {
           </div>
         </div>
 
-        <!-- Installment schedule -->
+        <!-- Installment schedule — BR, RR, CR each with paid/due per part -->
         <div class="lpc-schedule">
-          <div class="lpc-sch-title">Installment Schedule</div>
-          <table class="sch-table">
-            <thead><tr><th>Part</th><th>Due Date</th><th>BR</th><th>RR</th><th>CR</th></tr></thead>
-            <tbody>
-              <tr><td>1 · 35%</td><td>${d10}</td><td>₹${Utils.fmtNum(br1)}</td><td>₹${Utils.fmtNum(rr1)}</td><td>₹${Utils.fmtNum(cr1)}</td></tr>
-              <tr><td>2 · 35%</td><td>${d75}</td><td>₹${Utils.fmtNum(br2)}</td><td>₹${Utils.fmtNum(rr2)}</td><td>₹${Utils.fmtNum(cr2)}</td></tr>
-              <tr><td>3 · 30%</td><td>${d165}</td><td>₹${Utils.fmtNum(br3)}</td><td>₹${Utils.fmtNum(rr3)}</td><td>₹${Utils.fmtNum(cr3)}</td></tr>
-            </tbody>
-          </table>
+          <div class="lpc-sch-title">Installment Schedule (Total · Paid · Due per part)</div>
+          <div class="schedule-grid" style="grid-template-columns:repeat(3,1fr);">
+            ${instTable(r.installments,'br')}
+            ${instTable(r.installments,'rr')}
+            ${instTable(r.installments,'cr')}
+          </div>
+        </div>
+
+        <!-- Payment history -->
+        <div class="lpc-schedule" style="border-top:1px solid var(--border);">
+          <div class="lpc-sch-title">Payment History (${r.payments?r.payments.length:0} entries)</div>
+          ${payHistTable(r.payments)}
         </div>
       </div>`;
   });
