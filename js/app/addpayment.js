@@ -220,27 +220,57 @@ function buildPreview() {
     remaining -= toGroup;
 
     if (sameDateSlots.length === 1) {
-      // Single plot for this date — just allocate
-      sameDateSlots[0].allocated = toGroup;
+      // Single plot for this date — just allocate up to netDue
+      sameDateSlots[0].allocated = Math.min(sameDateSlots[0].netDue, toGroup);
     } else {
-      // Equal split across same-date slots, capped at each slot's netDue
-      const perSlot = toGroup / sameDateSlots.length;
-      let leftover = 0;
-      sameDateSlots.forEach(sl => {
-        const give = Math.min(sl.netDue, perSlot + leftover);
-        const actual = Math.min(give, sl.netDue);
-        leftover = give - actual;
-        sl.allocated = Math.round(actual);
-      });
-      // Assign any leftover from capping to first slot that can absorb it
-      if (leftover > 0.5) {
-        const absorber = sameDateSlots.find(sl => sl.allocated < sl.netDue);
-        if (absorber) absorber.allocated += Math.round(leftover);
+      // Equal split across same-date slots, strictly capped at each slot's netDue.
+      // Iterate: distribute equally, slots that hit their cap release excess to others.
+      let pool = toGroup;
+      let unfilled = sameDateSlots.map(sl => sl); // working copy refs
+      // Reset allocations
+      sameDateSlots.forEach(sl => { sl.allocated = 0; });
+
+      // Iterative equal-split with cap propagation
+      while (pool > 0.5 && unfilled.length > 0) {
+        const share = pool / unfilled.length;
+        let newPool = 0;
+        const stillUnfilled = [];
+        unfilled.forEach(sl => {
+          const remaining_due = sl.netDue - sl.allocated;
+          if (share >= remaining_due) {
+            // This slot is fully satisfied — give it exactly what it needs
+            sl.allocated += remaining_due;
+            // Excess share goes back to pool for redistribution
+            newPool += share - remaining_due;
+          } else {
+            // Slot can absorb the full share
+            sl.allocated += share;
+            stillUnfilled.push(sl);
+          }
+        });
+        pool = newPool;
+        unfilled = stillUnfilled;
       }
-      // Fix rounding so group total is exact
+
+      // Fix floating-point rounding — adjust last slot to make total exact
       const allocTotal = sameDateSlots.reduce((s, sl) => s + sl.allocated, 0);
-      const diff = Math.round(toGroup) - allocTotal;
-      if (diff !== 0) sameDateSlots[0].allocated += diff;
+      const diff = toGroup - allocTotal;
+      if (Math.abs(diff) >= 0.5) {
+        // Add rounding diff to whichever slot still has due remaining
+        const absorber = sameDateSlots.find(sl => sl.allocated < sl.netDue);
+        if (absorber) absorber.allocated += diff;
+        else sameDateSlots[sameDateSlots.length-1].allocated += diff;
+      }
+      // Round all to integers
+      sameDateSlots.forEach(sl => { sl.allocated = Math.round(sl.allocated); });
+      // Final integer rounding fix
+      const intTotal = sameDateSlots.reduce((s, sl) => s + sl.allocated, 0);
+      const intDiff  = Math.round(toGroup) - intTotal;
+      if (intDiff !== 0) {
+        const absorber = sameDateSlots.find(sl => sl.allocated < sl.netDue);
+        if (absorber) absorber.allocated += intDiff;
+        else sameDateSlots[0].allocated += intDiff;
+      }
     }
     i = j;
   }
