@@ -12,6 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Default booking date
   document.getElementById('f-bookdate').value = new Date().toISOString().split('T')[0];
 
+  // Pre-fill from reservation conversion (?plotNo=&customerName=&phone=)
+  const urlP = new URLSearchParams(window.location.search);
+  if (urlP.get('customerName')) document.getElementById('f-name').value  = urlP.get('customerName');
+  if (urlP.get('phone'))        document.getElementById('f-phone').value = urlP.get('phone');
+  if (urlP.get('plotNo')) {
+    // Wait for plots to load then auto-select the plot
+    window._preSelectPlot = urlP.get('plotNo');
+  }
+
   // Load available plots
   loadAvailablePlots();
 
@@ -84,6 +93,12 @@ function renderPlotGrid() {
   grid.querySelectorAll('.pgrid-cell').forEach(cell => {
     cell.addEventListener('click', () => togglePlotFromGrid(cell));
   });
+
+  // Auto-select from URL param (reservation conversion)
+  if (window._preSelectPlot) {
+    const target = grid.querySelector(`.pgrid-cell[data-plot="${window._preSelectPlot}"]`);
+    if (target) { togglePlotFromGrid(target); window._preSelectPlot = null; }
+  }
 }
 
 function togglePlotFromGrid(cell) {

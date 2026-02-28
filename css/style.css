@@ -1581,3 +1581,137 @@ header {
   margin: 12px 0 4px;
   line-height: 1.5;
 }
+
+/* ════════════════════════════════════════════════
+   RESERVE PAGE
+════════════════════════════════════════════════ */
+.res-layout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 24px;
+  align-items: start;
+}
+.res-form-col  { min-width: 0; }
+.res-list-col  { min-width: 0; position: sticky; top: 80px; }
+
+.res-selected-plot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  background: #e8f5e9;
+  border: 1.5px solid #a5d6a7;
+  border-radius: var(--r);
+  font-size: .85rem;
+  font-weight: 600;
+  color: #2e7d32;
+}
+.res-sel-check { font-size: 1rem; }
+
+.res-expiry-hint {
+  font-size: .78rem;
+  color: var(--grey);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* Reservations list */
+.res-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.res-list-title { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 700; color: var(--ink); }
+.btn-refresh {
+  padding: 5px 12px;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  border-radius: 6px;
+  font-size: .78rem;
+  cursor: pointer;
+  color: var(--grey);
+}
+.btn-refresh:hover { border-color: var(--forest-mid); color: var(--forest); }
+
+/* Reservation card */
+.res-card {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  transition: box-shadow .15s;
+}
+.res-card-active  { border-color: #a5d6a7; background: #f9fffe; }
+.res-card-urgent  { border-color: #ef9a9a; background: #fff8f8; animation: pulse-border 2s infinite; }
+
+@keyframes pulse-border {
+  0%,100% { border-color: #ef9a9a; }
+  50%      { border-color: var(--red); }
+}
+
+.res-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.res-card-plot     { font-weight: 800; font-size: .95rem; color: var(--forest); font-family: 'Cormorant Garamond', serif; }
+.res-card-customer { font-weight: 600; font-size: .88rem; color: var(--ink); margin-bottom: 2px; }
+.res-card-meta     { font-size: .72rem; color: var(--grey); margin-bottom: 4px; }
+.res-card-expiry   { font-size: .78rem; color: var(--grey); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.res-expiry-urgent { color: var(--red); font-weight: 600; }
+.res-timeleft      { background: var(--mist); padding: 2px 7px; border-radius: 10px; font-size: .7rem; font-weight: 700; color: var(--forest); }
+.res-card-notes    { font-size: .75rem; color: var(--grey); font-style: italic; margin-top: 6px; border-top: 1px solid var(--border); padding-top: 6px; }
+
+.res-card-actions  { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.btn-convert {
+  padding: 6px 14px;
+  background: var(--forest);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-convert:hover { background: var(--forest-mid); }
+.btn-cancel-res {
+  padding: 6px 14px;
+  background: none;
+  border: 1.5px solid var(--red);
+  color: var(--red);
+  border-radius: 6px;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-cancel-res:hover { background: #fff5f5; }
+
+/* Status badges */
+.res-status-badge    { padding: 3px 9px; border-radius: 20px; font-size: .68rem; font-weight: 700; text-transform: uppercase; }
+.res-status-active   { background: #e8f5e9; color: #2e7d32; }
+.res-status-expired  { background: #fff3e0; color: #e65100; }
+.res-status-cancelled{ background: #fce4ec; color: #c62828; }
+.res-status-converted{ background: #e3f2fd; color: #1565c0; }
+
+/* Convert / Cancel modal info */
+.res-modal-info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--mist);
+  border-radius: var(--r);
+  padding: 12px 16px;
+}
+.res-modal-plot     { font-weight: 800; color: var(--forest); font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; }
+.res-modal-customer { font-weight: 600; color: var(--ink); }
+.res-modal-phone    { color: var(--grey); font-size: .85rem; }
+
+@media (max-width: 900px) {
+  .res-layout { grid-template-columns: 1fr; }
+  .res-list-col { position: static; }
+}
