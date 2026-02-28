@@ -33,9 +33,9 @@ async function loadBookings() {
 function buildColumns(role) {
   bookingCols = role==='admin'
     ? ['Receipt No','Booking Date','Booked By Name','Customer Full Name','Phone Number',
-       'Plot No','Token Amount','Payment Mode','BR Amount','RR Amount','CR Amount','Status','Action']
+       'Plot No','Payment Mode','BR Amount','RR Amount','CR Amount','Status','Action']
     : ['Receipt No','Booking Date','Booked By Name','Customer Full Name','Plot No',
-       'Token Amount','Payment Mode','Status','Action'];
+       'Payment Mode','Status','Action'];
   document.getElementById('bookingsThead').innerHTML =
     '<tr>'+bookingCols.map(c=>`<th>${c==='Action'?'':c}</th>`).join('')+'</tr>';
 }
@@ -66,10 +66,10 @@ function renderTable(rows) {
       return `<td style="white-space:nowrap;">${btns}</td>`;
     }
     if (col==='Status') return `<td>${Utils.statusBadge(b['Status']||'Active')}</td>`;
-    if (['Token Amount','BR Amount','RR Amount','CR Amount'].includes(col))
+    if (['BR Amount','RR Amount','CR Amount'].includes(col))
       return `<td>${b[col]?'₹'+Utils.fmtNum(b[col]):'—'}</td>`;
     if (col==='Receipt No')
-      return `<td><a href="status.html?receipt=${b[col]}" style="color:var(--forest);font-weight:600;text-decoration:underline;">${b[col]||'—'}</a></td>`;
+      return `<td style="font-weight:600;color:var(--forest);">${b[col]||'—'}</td>`;
     return `<td>${b[col]!==undefined&&b[col]!==''?b[col]:'—'}</td>`;
   }).join('')+'</tr>').join('');
 

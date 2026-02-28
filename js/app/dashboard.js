@@ -45,7 +45,7 @@ async function loadRecent() {
         <td><strong>${b['Receipt No']||'—'}</strong></td>
         <td>${b['Booking Date']||'—'}</td>
         <td>Plot ${b['Plot No']||'—'}</td>
-        <td>${b['Token Amount'] ? '₹'+Utils.fmtNum(b['Token Amount']) : '—'}</td>
+
         <td>${b['Payment Mode']||'—'}</td>
         <td>${Utils.statusBadge(b['Status']||'Active')}</td>
       </tr>`).join('');
