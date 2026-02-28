@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Hide revenue card for sales role
   if (_session.role !== 'admin') {
-    const rc = document.getElementById('revenueCard');
+    const rc = null; // token card removed
     if (rc) rc.style.display = 'none';
   }
 
@@ -25,7 +25,7 @@ async function loadStats() {
     document.getElementById('s-booked').textContent = s.booked;
     document.getElementById('s-res').textContent    = s.reserved;
     if (_session.role === 'admin') {
-      document.getElementById('s-rev').textContent = Utils.fmtCurrency(s.totalRevenue);
+      // token revenue card removed
     }
   } catch(e) {}
 }

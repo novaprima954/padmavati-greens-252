@@ -298,7 +298,7 @@ function renderPreview(slots, totalAmt, mode) {
         <td>${pctLabels[s.part-1]}</td>
         <td>${s.dueDateStr}</td>
         <td>₹${Utils.fmtNum(s.gross)}</td>
-        <td style="color:${s.alreadyPaid>0?'#2e7d32':'var(--grey)};">₹${Utils.fmtNum(s.alreadyPaid)}</td>
+        <td style="color:${s.alreadyPaid>0 ? '#2e7d32' : '#999'}">₹${Utils.fmtNum(s.alreadyPaid)}</td>
         <td class="${s.netDue>0?'amt-due':'amt-ok'}">₹${Utils.fmtNum(s.netDue)}</td>
         <td><input type="number" class="alloc-input" data-row="${rowIdx}" value="${s.allocated}" min="0"
           style="width:120px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;"></td>
