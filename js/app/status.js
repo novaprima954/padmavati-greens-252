@@ -257,12 +257,13 @@ function renderFullReceipt(b, limited, payments) {
   }
   html += `</div>`;
 
-  // Add payment form — admin only
-  if (b['Status']!=='Cancelled' && sess && sess.role==='admin') {
+  // Link to Add Payment page (admin only)
+  if (b['Status']!=='Cancelled') {
     html += `
-      <div class="rc-section" id="addPaymentSection">
-        <div class="rc-section-title">Add Payment</div>
-        <div id="statusAddPayForm"></div>
+      <div class="rc-section">
+        ${sess && sess.role==='admin'
+          ? `<a href="addpayment.html" class="btn-submit" style="display:inline-block;text-decoration:none;text-align:center;">💳 Add Payment</a>`
+          : `<div class="pay-hint">Contact admin to record payments.</div>`}
       </div>`;
   }
 
@@ -272,10 +273,7 @@ function renderFullReceipt(b, limited, payments) {
   card.innerHTML = html;
   card.classList.add('show');
 
-  // Attach add payment form — admin only
-  if (b['Status']!=='Cancelled' && sess && sess.role==='admin') {
-    renderAddPaymentForm('statusAddPayForm', b['Receipt No']);
-  }
+  // Payment form removed — use Add Payment page
 }
 
 // ── Reusable add payment form ─────────────────────

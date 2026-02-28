@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Payment – Padmavati Greens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  (function(){
+    try {
+      var s = JSON.parse(localStorage.getItem('pg_session'));
+      if (!s||!s.token) { window.location.replace('login.html'); }
+      if (s.role !== 'admin') { window.location.replace('index.html'); }
+    } catch(e) { window.location.replace('login.html'); }
+  })();
+</script>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="page-title">Add Payment</div>
+  <div class="page-sub">Record payment against one or multiple plots for a customer</div>
+
+  <!-- Step 1: Customer search -->
+  <div class="ap-card" id="step1">
+    <div class="ap-step-head">
+      <span class="ap-step-num">1</span>
+      <span class="ap-step-title">Find Customer</span>
+    </div>
+    <div class="ap-search-row">
+      <input type="text" id="apCustomerName" class="ap-input" placeholder="Enter customer name…">
+      <button class="btn-submit" id="apSearchBtn" style="width:auto;padding:10px 24px;">Search</button>
+    </div>
+    <div id="apCustomerResults"></div>
+  </div>
+
+  <!-- Step 2: Payment details -->
+  <div class="ap-card" id="step2" style="display:none;">
+    <div class="ap-step-head">
+      <span class="ap-step-num">2</span>
+      <span class="ap-step-title">Payment Details</span>
+      <button class="btn-back-sm" id="apChangeCustomer">✕ Change customer</button>
+    </div>
+    <div class="ap-customer-banner" id="apCustomerBanner"></div>
+
+    <div class="form-row">
+      <div class="fg">
+        <label>Payment Date <span class="req">*</span></label>
+        <input type="date" id="apDate" value="">
+      </div>
+      <div class="fg">
+        <label>Manual Receipt No <span class="req">*</span></label>
+        <input type="text" id="apManualRcpt" placeholder="e.g. 1225">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg">
+        <label>Total Amount (₹) <span class="req">*</span></label>
+        <input type="number" id="apTotalAmount" placeholder="e.g. 100000" min="1">
+      </div>
+      <div class="fg">
+        <label>Mode <span class="req">*</span></label>
+        <select id="apMode">
+          <option value="">Select…</option>
+          <option>Cash</option>
+          <option>NEFT / RTGS</option>
+          <option>UPI</option>
+          <option>Cheque</option>
+          <option>DD</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg">
+        <label>Reference / UTR</label>
+        <input type="text" id="apReference" placeholder="UTR / cheque no.">
+      </div>
+      <div class="fg">
+        <label>Notes</label>
+        <input type="text" id="apNotes" placeholder="Optional">
+      </div>
+    </div>
+    <div class="pay-hint">Cash → CR &nbsp;|&nbsp; All other modes → RR &nbsp;|&nbsp; Receipt 1–2000 auto-sets Cash</div>
+    <button class="btn-submit" id="apPreviewBtn" style="margin-top:8px;">Preview Distribution →</button>
+  </div>
+
+  <!-- Step 3: Distribution preview -->
+  <div class="ap-card" id="step3" style="display:none;">
+    <div class="ap-step-head">
+      <span class="ap-step-num">3</span>
+      <span class="ap-step-title">Review & Adjust Distribution</span>
+      <button class="btn-back-sm" id="apEditPayment">← Edit payment</button>
+    </div>
+    <div class="ap-dist-summary" id="apDistSummary"></div>
+    <div id="apDistTable"></div>
+    <div class="ap-dist-footer" id="apDistFooter"></div>
+    <button class="btn-submit" id="apSaveBtn" style="margin-top:16px;">💾 Save Payment</button>
+  </div>
+
+  <!-- Step 4: Confirmation -->
+  <div class="ap-card" id="step4" style="display:none;">
+    <div class="ap-step-head">
+      <span class="ap-step-num">✓</span>
+      <span class="ap-step-title">Payment Saved</span>
+    </div>
+    <div id="apConfirmation"></div>
+    <div style="display:flex;gap:12px;margin-top:20px;">
+      <button class="btn-submit" id="apNewPayment" style="background:var(--forest-mid);">+ Add Another Payment</button>
+      <a href="bookings.html" class="btn-submit" style="text-decoration:none;text-align:center;">View Bookings</a>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/header.js"></script>
+<script src="js/app/addpayment.js"></script>
+</body>
+</html>

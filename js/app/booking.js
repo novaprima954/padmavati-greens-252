@@ -1,373 +1,428 @@
-// js/app/booking.js
+// js/app/booking.js — Multi-plot booking
 Auth.requireAuth();
 
-let allPlots    = [];
-let selPlotNo   = null;
-let selAreaSqft = 0;
-let lastBooking = null;
-
-const MAP_ROWS = [
-  { label:null,       plots:['1','2A','2B','3A','3B','4A','4B','5A','5B','6A','6B','7A','7B','8A','8B','9A','9B','10A','10B','11A','11B','12A','12B','13A','13B','14A','14B'] },
-  { label:'9M ROAD',  plots:['15A','15B','16A','16B','17A','17B','18A','18B','19A','19B','20A','20B','21A','21B','22A','22B','23A','23B','24A','24B','25A','25B','26A','26B','27A','27B','28A','28B','29'] },
-  { label:'9M ROAD',  plots:['30A','30B','31','32A','32B','33A','33B','34A','34B','35A','35B','36A','36B','37A','37B','38A','38B','39A','39B','40A','40B','41A','41B','42A','42B','43','44A','44B','45','46'] },
-  { label:'9M ROAD',  plots:['47A','47B','48A','48B','49A','49B','50A','50B','51A','51B','52A','52B','53A','53B','54A','54B','55A','55B','56A','56B','57A','57B','58A','58B','59','60A','60B','61','62'] },
-  { label:'12M ROAD', plots:['63A','63B','64A','64B','65A','65B','66A','66B','67A','67B','68A','68B','69A','69B','70A','70B','71A','71B','72A','72B','73A','73B','74A','74B','75A','75B','76'] },
-  { label:'9M ROAD',  plots:['77A','77B','78A','78B','79A','79B','80A','80B','81A','81B','82A','82B','83A','83B','84A','84B','85A','85B','86A','86B','87A','87B','88A','88B','89','90'] },
-  { label:'9M ROAD',  plots:['91A','91B','92A','92B','93A','93B','94A','94B','95A','95B','96A','96B','97A','97B','98A','98B','99','100A','100B'] },
-  { label:'9M ROAD',  plots:['101','102A','102B','103A','103B','104A','104B','105A','105B','106A','106B','107A','107B','108A','108B','109A','109B','110','111A','111B'] },
-  { label:'12M ROAD', plots:['112A','112B','113A','113B','114A','114B','115A','115B','116A','116B','117A','117B','118A','118B','119A','119B','120A','120B','121A','121B','122A','122B','123'] },
-  { label:'9M ROAD',  plots:['124A','124B','125A','125B','126A','126B','127A','127B','128A','128B','129A','129B','130A','130B','131A','131B','132A','132B','133A','133B','134A','134B','135'] },
-  { label:'9M ROAD',  plots:['136A','136B','137A','137B','138A','138B','139A','139B','140A','140B','141A','141B','142A','142B','143A','143B','144A','144B','145'] },
-  { label:'9M ROAD',  plots:['146A','146B','147A','147B','148A','148B','149A','149B','150A','150B','151A','151B','152A','152B','153'] },
-  { label:'17M ROAD', plots:['154A','154B','155A','155B','156A','156B','157A','157B','158A','158B','159A','159B','160A','160B','161A','161B','162A','162B','163A','163B','164A','164B','165','166','167','168','169','170','171','172','173'] },
-  { label:'9M ROAD',  plots:['174A','174B','175A','175B','176A','176B','177A','177B','178A','178B','179A','179B','180A','180B','181A','181B','182A','182B'] },
-  { label:'12M ROAD', plots:['183A','183B','184A','184B','185A','185B','186A','186B','187A','187B','188A','188B','189A','189B','190A','190B','191A','191B'] },
-];
+let availablePlots = [];
+let plotEntries    = [];  // [{id, plotNo, br, rr, area, brAmt, rrAmt, crAmt}]
+let lastBooking    = null;
+let plotCounter    = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
   Header.init('booking');
-  Utils.setupOverlays();
 
-  // Default booking date = today
-  const bd = document.getElementById('f-bookdate');
-  bd.value = new Date().toISOString().split('T')[0];
+  // Default booking date
+  document.getElementById('f-bookdate').value = new Date().toISOString().split('T')[0];
 
-  loadPlots();
-  setupPickerTabs();
-  setupRateCalc();
-  document.getElementById('bookingForm').addEventListener('submit', submitBooking);
+  // Load available plots
+  loadAvailablePlots();
 
-  // Receipt number → auto-set payment mode
+  // Receipt → mode auto-detect
   const rcpt1El   = document.getElementById('f-receipt1');
   const paymodeEl = document.getElementById('f-paymode');
   rcpt1El.addEventListener('input', () => {
-    const detected = Utils.receiptToMode(rcpt1El.value);
-    if (detected && paymodeEl.value === '') {
-      paymodeEl.value = detected;
-      paymodeEl.dispatchEvent(new Event('change'));
-    }
+    const det = Utils.receiptToMode(rcpt1El.value);
+    if (det && paymodeEl.value === '') { paymodeEl.value = det; }
   });
   rcpt1El.addEventListener('blur', () => {
-    const detected = Utils.receiptToMode(rcpt1El.value);
-    if (detected && paymodeEl.value && paymodeEl.value !== detected) {
-      Utils.toast(`Receipt ${rcpt1El.value} suggests ${detected} — currently set to ${paymodeEl.value}`, 'err');
-    }
+    const det = Utils.receiptToMode(rcpt1El.value);
+    if (det && paymodeEl.value && paymodeEl.value !== det)
+      Utils.toast(`Receipt ${rcpt1El.value} suggests ${det} — mode is ${paymodeEl.value}`, 'err');
   });
   paymodeEl.addEventListener('change', () => {
-    const detected = Utils.receiptToMode(rcpt1El.value);
-    if (rcpt1El.value && detected && paymodeEl.value && paymodeEl.value !== detected) {
-      Utils.toast(`Receipt ${rcpt1El.value} suggests ${detected} — mode is set to ${paymodeEl.value}`, 'err');
-    }
+    const det = Utils.receiptToMode(rcpt1El.value);
+    if (rcpt1El.value && det && paymodeEl.value && paymodeEl.value !== det)
+      Utils.toast(`Receipt suggests ${det} — mode is ${paymodeEl.value}`, 'err');
+    recalcSummary();
   });
-  document.getElementById('waShareBtn').addEventListener('click', shareWhatsApp);
+
+  document.getElementById('f-bookdate').addEventListener('change', recalcSummary);
+  document.getElementById('f-token').addEventListener('input', () => { updateTokenSplit(); recalcSummary(); });
+  document.getElementById('addPlotBtn').addEventListener('click', addPlotRow);
+  document.getElementById('bookBtn').addEventListener('click', submitBooking);
+
+  document.getElementById('newBookingBtn').addEventListener('click', () => {
+    Utils.closeOverlay('confirmOverlay');
+    resetForm();
+  });
+
+  // Add first plot row
+  addPlotRow();
 });
 
-// ── Picker tabs ───────────────────────────────────
-function setupPickerTabs() {
-  document.querySelectorAll('.picker-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.picker-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const view = tab.dataset.view;
-      document.getElementById('pickerGrid').style.display = view==='grid' ? 'block' : 'none';
-      document.getElementById('pickerMap').style.display  = view==='map'  ? 'block' : 'none';
-      if (view==='map' && allPlots.length) renderSvgMap();
-    });
-  });
-}
-
-// ── Rate calculator ───────────────────────────────
-function setupRateCalc() {
-  const brEl = document.getElementById('f-br');
-  const rrEl = document.getElementById('f-rr');
-  const crEl = document.getElementById('f-cr');
-  const tokEl = document.getElementById('f-token');
-  const modeEl = document.getElementById('f-paymode');
-
-  function recalc() {
-    const br   = parseFloat(brEl.value) || 0;
-    const rr   = parseFloat(rrEl.value) || 0;
-    const cr   = br - rr;
-    const area = selAreaSqft;
-
-    crEl.value = br > 0 || rr > 0 ? cr : '';
-
-    if (br > 0 && rr > 0 && area > 0) {
-      const brAmt = Math.round(br * area);
-      const rrAmt = Math.round(rr * area);
-      const crAmt = Math.round(cr * area);
-
-      document.getElementById('rs-br').textContent = '₹'+Utils.fmtNum(brAmt);
-      document.getElementById('rs-rr').textContent = '₹'+Utils.fmtNum(rrAmt);
-      document.getElementById('rs-cr').textContent = '₹'+Utils.fmtNum(crAmt);
-      document.getElementById('rateSummary').style.display = 'flex';
-
-      // Installments — 10 / 75 / 165 days with exact dates
-      const tok    = parseFloat(tokEl.value) || 0;
-      const isCash = modeEl.value === 'Cash';
-      const tokRR  = isCash ? 0 : tok;
-      const tokCR  = isCash ? tok : 0;
-      const tokBR  = tok;
-
-      const bdRaw  = document.getElementById('f-bookdate').value;
-      const bdDate = bdRaw ? new Date(bdRaw) : new Date();
-      function addDaysLocal(d, n) { const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
-      function fmtDateLocal(d)    { return d.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'}); }
-      const d10  = fmtDateLocal(addDaysLocal(bdDate,10));
-      const d75  = fmtDateLocal(addDaysLocal(bdDate,75));
-      const d165 = fmtDateLocal(addDaysLocal(bdDate,165));
-
-      const br1=Math.round(brAmt*.35), br2=Math.round(brAmt*.35), br3=brAmt-br1-br2;
-      const rr1=Math.round(rrAmt*.35), rr2=Math.round(rrAmt*.35), rr3=rrAmt-rr1-rr2;
-      const cr1=Math.round(crAmt*.35), cr2=Math.round(crAmt*.35), cr3=crAmt-cr1-cr2;
-
-      // Store for WhatsApp share
-      window._pgSchedule = { brAmt,rrAmt,crAmt,br1,br2,br3,rr1,rr2,rr3,cr1,cr2,cr3,d10,d75,d165,tok,tokRR,tokCR,tokBR };
-
-      // BR
-      document.getElementById('br-p1').textContent = `₹${Utils.fmtNum(br1)} · ${d10}`;
-      document.getElementById('br-p2').textContent = `₹${Utils.fmtNum(br2)} · ${d75}`;
-      document.getElementById('br-p3').textContent = `₹${Utils.fmtNum(br3)} · ${d165}`;
-      document.getElementById('br-tok').textContent = tokBR > 0 ? '−₹'+Utils.fmtNum(tokBR) : '—';
-      document.getElementById('br-bal').textContent = '₹'+Utils.fmtNum(Math.max(0, brAmt - tokBR));
-      // RR
-      document.getElementById('rr-p1').textContent = `₹${Utils.fmtNum(rr1)} · ${d10}`;
-      document.getElementById('rr-p2').textContent = `₹${Utils.fmtNum(rr2)} · ${d75}`;
-      document.getElementById('rr-p3').textContent = `₹${Utils.fmtNum(rr3)} · ${d165}`;
-      document.getElementById('rr-tok').textContent = tokRR > 0 ? '−₹'+Utils.fmtNum(tokRR) : '—';
-      document.getElementById('rr-bal').textContent = '₹'+Utils.fmtNum(Math.max(0, rrAmt - tokRR));
-      // CR
-      document.getElementById('cr-p1').textContent = `₹${Utils.fmtNum(cr1)} · ${d10}`;
-      document.getElementById('cr-p2').textContent = `₹${Utils.fmtNum(cr2)} · ${d75}`;
-      document.getElementById('cr-p3').textContent = `₹${Utils.fmtNum(cr3)} · ${d165}`;
-      document.getElementById('cr-tok').textContent = tokCR > 0 ? '−₹'+Utils.fmtNum(tokCR) : '—';
-      document.getElementById('cr-bal').textContent = '₹'+Utils.fmtNum(Math.max(0, crAmt - tokCR));
-
-      document.getElementById('installmentBox').style.display = 'block';
-    } else {
-      document.getElementById('rateSummary').style.display = 'none';
-      document.getElementById('installmentBox').style.display = 'none';
-      window._pgSchedule = null;
-    }
-  }
-
-  brEl.addEventListener('input', recalc);
-  rrEl.addEventListener('input', recalc);
-  document.getElementById('f-token').addEventListener('input', recalc);
-  document.getElementById('f-paymode').addEventListener('change', recalc);
-  document.getElementById('f-bookdate').addEventListener('change', recalc);
-}
-
-// ── Load plots ────────────────────────────────────
-async function loadPlots() {
+async function loadAvailablePlots() {
   try {
     const data = await API.get({ action:'getPlots' });
     if (data.error) throw new Error(data.error);
-    allPlots = data.plots;
-    renderBplotGrid(allPlots);
-    const pp = new URLSearchParams(window.location.search).get('plot');
-    if (pp) selectBplot(pp);
-  } catch(e) {
-    document.getElementById('bplotGrid').innerHTML =
-      `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${e.message}</p></div>`;
+    availablePlots = (data.plots || []).filter(p => p['Status'] === 'Available');
+    // Refresh plot dropdowns
+    document.querySelectorAll('.plot-select').forEach(sel => populatePlotSelect(sel));
+  } catch(e) { Utils.toast('Could not load plots: '+e.message, 'err'); }
+}
+
+function populatePlotSelect(sel) {
+  const current = sel.value;
+  const usedPlots = plotEntries.filter(e => e.id !== sel.dataset.entryId).map(e => e.plotNo);
+  sel.innerHTML = '<option value="">Select plot…</option>' +
+    availablePlots
+      .filter(p => !usedPlots.includes(String(p['Plot No'])) || String(p['Plot No'])===current)
+      .map(p => `<option value="${p['Plot No']}" data-area="${p['Area SqFt']||0}">${p['Plot No']} — ${p['Area SqFt']||0} SqFt</option>`)
+      .join('');
+  if (current) sel.value = current;
+}
+
+function addPlotRow() {
+  const id = ++plotCounter;
+  plotEntries.push({ id, plotNo:'', br:0, rr:0, area:0, brAmt:0, rrAmt:0, crAmt:0 });
+
+  const container = document.getElementById('plotsContainer');
+  const div = document.createElement('div');
+  div.className = 'plot-entry-card';
+  div.dataset.entryId = id;
+  div.innerHTML = `
+    <div class="pec-header">
+      <span class="pec-num">Plot ${plotEntries.length}</span>
+      ${plotEntries.length > 1 ? `<button type="button" class="pec-remove" data-id="${id}">✕ Remove</button>` : ''}
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Plot No <span class="req">*</span></label>
+        <select class="plot-select" data-entry-id="${id}">
+          <option value="">Loading…</option>
+        </select></div>
+      <div class="fg pec-area-wrap">
+        <label>Area</label>
+        <div class="pec-area" id="pec-area-${id}">—</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>BR Rate (₹/sqft) <span class="req">*</span></label>
+        <input type="number" class="rate-br" data-entry-id="${id}" placeholder="e.g. 295"></div>
+      <div class="fg"><label>RR Rate (₹/sqft) <span class="req">*</span></label>
+        <input type="number" class="rate-rr" data-entry-id="${id}" placeholder="e.g. 170"></div>
+    </div>
+    <div class="pec-amounts" id="pec-amounts-${id}" style="display:none;">
+      <div class="pec-amt-chip br-chip">BR ₹<span id="pec-br-${id}">0</span></div>
+      <div class="pec-amt-chip rr-chip2">RR ₹<span id="pec-rr-${id}">0</span></div>
+      <div class="pec-amt-chip cr-chip2">CR ₹<span id="pec-cr-${id}">0</span></div>
+    </div>`;
+  container.appendChild(div);
+
+  const sel = div.querySelector('.plot-select');
+  populatePlotSelect(sel);
+  sel.addEventListener('change', () => {
+    const entry = plotEntries.find(e => e.id === id);
+    const opt = sel.selectedOptions[0];
+    entry.plotNo = sel.value;
+    entry.area   = parseFloat(opt ? opt.dataset.area : 0) || 0;
+    document.getElementById(`pec-area-${id}`).textContent = entry.area ? entry.area+' SqFt' : '—';
+    recalcEntry(id);
+    refreshAllSelects();
+    updateTokenSplit();
+  });
+
+  div.querySelectorAll('.rate-br, .rate-rr').forEach(inp => {
+    inp.addEventListener('input', () => { recalcEntry(id); recalcSummary(); });
+  });
+
+  if (div.querySelector('.pec-remove')) {
+    div.querySelector('.pec-remove').addEventListener('click', () => removePlotRow(id));
+  }
+
+  populatePlotSelect(sel);
+  renumberPlots();
+}
+
+function removePlotRow(id) {
+  plotEntries = plotEntries.filter(e => e.id !== id);
+  document.querySelector(`.plot-entry-card[data-entry-id="${id}"]`).remove();
+  refreshAllSelects();
+  renumberPlots();
+  updateTokenSplit();
+  recalcSummary();
+}
+
+function renumberPlots() {
+  document.querySelectorAll('.plot-entry-card').forEach((card, i) => {
+    card.querySelector('.pec-num').textContent = 'Plot '+(i+1);
+  });
+}
+
+function refreshAllSelects() {
+  document.querySelectorAll('.plot-select').forEach(sel => {
+    sel.dataset.entryId && populatePlotSelect(sel);
+  });
+}
+
+function recalcEntry(id) {
+  const entry = plotEntries.find(e => e.id === id);
+  if (!entry) return;
+  const brEl = document.querySelector(`.rate-br[data-entry-id="${id}"]`);
+  const rrEl = document.querySelector(`.rate-rr[data-entry-id="${id}"]`);
+  entry.br = parseFloat(brEl ? brEl.value : 0) || 0;
+  entry.rr = parseFloat(rrEl ? rrEl.value : 0) || 0;
+  const cr = entry.br - entry.rr;
+  entry.brAmt = Math.round(entry.br * entry.area);
+  entry.rrAmt = Math.round(entry.rr * entry.area);
+  entry.crAmt = Math.round(cr * entry.area);
+
+  const amtsDiv = document.getElementById(`pec-amounts-${id}`);
+  if (entry.brAmt > 0) {
+    amtsDiv.style.display = 'flex';
+    document.getElementById(`pec-br-${id}`).textContent = Utils.fmtNum(entry.brAmt);
+    document.getElementById(`pec-rr-${id}`).textContent = Utils.fmtNum(entry.rrAmt);
+    document.getElementById(`pec-cr-${id}`).textContent = Utils.fmtNum(entry.crAmt);
+  } else {
+    amtsDiv.style.display = 'none';
+  }
+  recalcSummary();
+}
+
+function updateTokenSplit() {
+  const total   = parseFloat(document.getElementById('f-token').value) || 0;
+  const valid   = plotEntries.filter(e => e.plotNo && e.brAmt > 0);
+  const splitInfo = document.getElementById('tokenSplitInfo');
+  const splitFields = document.getElementById('tokenSplitFields');
+
+  if (valid.length <= 1) { splitInfo.style.display='none'; return; }
+  splitInfo.style.display = 'block';
+  const perPlot = total > 0 ? Math.round(total / valid.length) : 0;
+  splitFields.innerHTML = valid.map((e, i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <span style="font-size:.8rem;min-width:60px;color:var(--grey);">Plot ${e.plotNo}</span>
+      <input type="number" class="token-split-inp" data-idx="${i}" value="${i===valid.length-1 ? total-perPlot*(valid.length-1) : perPlot}"
+        style="width:110px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;" min="0">
+    </div>`).join('');
+
+  // Live balance check
+  splitFields.querySelectorAll('.token-split-inp').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const sum = [...splitFields.querySelectorAll('.token-split-inp')].reduce((s,i)=>s+parseFloat(i.value)||0,0);
+      const diff = total - sum;
+      if (Math.abs(diff) > 0.5) Utils.toast(`Token split total ₹${Utils.fmtNum(sum)} vs ₹${Utils.fmtNum(total)}`, 'err');
+    });
+  });
+}
+
+function getTokenSplits() {
+  const valid = plotEntries.filter(e => e.plotNo && e.brAmt > 0);
+  const total = parseFloat(document.getElementById('f-token').value) || 0;
+  if (valid.length <= 1) return valid.map(() => total);
+  const fields = document.querySelectorAll('.token-split-inp');
+  if (fields.length === valid.length) {
+    return [...fields].map(f => parseFloat(f.value)||0);
+  }
+  const perPlot = Math.round(total / valid.length);
+  return valid.map((_, i) => i===valid.length-1 ? total-perPlot*(valid.length-1) : perPlot);
+}
+
+function recalcSummary() {
+  const valid = plotEntries.filter(e => e.plotNo && e.brAmt > 0);
+  const summaryEmpty   = document.getElementById('summaryEmpty');
+  const summaryContent = document.getElementById('summaryContent');
+  if (!valid.length) {
+    summaryEmpty.style.display='block'; summaryContent.style.display='none'; return;
+  }
+  summaryEmpty.style.display='none'; summaryContent.style.display='block';
+
+  const totalBR = valid.reduce((s,e)=>s+e.brAmt,0);
+  const totalRR = valid.reduce((s,e)=>s+e.rrAmt,0);
+  const totalCR = valid.reduce((s,e)=>s+e.crAmt,0);
+  const token   = parseFloat(document.getElementById('f-token').value)||0;
+  const mode    = document.getElementById('f-paymode').value;
+  const tokRR   = mode!=='Cash' ? token : 0;
+  const tokCR   = mode==='Cash' ? token : 0;
+
+  const bdRaw  = document.getElementById('f-bookdate').value;
+  const bdDate = bdRaw ? new Date(bdRaw) : new Date();
+  function addD(d,n){ const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
+  function fmtD(d)  { return d.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+  const d10=fmtD(addD(bdDate,10)), d75=fmtD(addD(bdDate,75)), d165=fmtD(addD(bdDate,165));
+
+  // Plot summary rows
+  document.getElementById('plotsSummaryList').innerHTML = valid.map(e => `
+    <div class="sum-plot-row">
+      <div class="sum-plot-no">Plot ${e.plotNo}</div>
+      <div class="sum-plot-area">${e.area} SqFt · BR ₹${e.br} · RR ₹${e.rr}</div>
+      <div class="sum-plot-amts">
+        <span>BR ₹${Utils.fmtNum(e.brAmt)}</span>
+        <span>RR ₹${Utils.fmtNum(e.rrAmt)}</span>
+        <span>CR ₹${Utils.fmtNum(e.crAmt)}</span>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('totalsSummary').innerHTML = `
+    <div class="sum-totals">
+      <div class="sum-total-row"><span>Total BR</span><strong>₹${Utils.fmtNum(totalBR)}</strong></div>
+      <div class="sum-total-row"><span>Total RR</span><strong>₹${Utils.fmtNum(totalRR)}</strong></div>
+      <div class="sum-total-row"><span>Total CR</span><strong>₹${Utils.fmtNum(totalCR)}</strong></div>
+      <div class="sum-total-row sum-token"><span>Token</span><strong>₹${Utils.fmtNum(token)}</strong></div>
+    </div>`;
+
+  // Schedules
+  if (valid.length > 0 && token >= 0) {
+    const schedHTML = valid.map(e => {
+      const rr1=Math.round(e.rrAmt*.35), rr2=Math.round(e.rrAmt*.35), rr3=e.rrAmt-rr1-rr2;
+      const cr1=Math.round(e.crAmt*.35), cr2=Math.round(e.crAmt*.35), cr3=e.crAmt-cr1-cr2;
+      const br1=Math.round(e.brAmt*.35), br2=Math.round(e.brAmt*.35), br3=e.brAmt-br1-br2;
+      return `
+        <div class="sum-schedule-plot">
+          <div class="sum-sch-plotno">Plot ${e.plotNo}</div>
+          <div class="schedule-grid" style="grid-template-columns:repeat(3,1fr);">
+            <div class="inst-mini inst-br">
+              <div class="inst-mini-title">BR</div>
+              <div class="inst-mini-row hdr"><span>Part</span><span>Date</span><span>Amount</span></div>
+              <div class="inst-mini-row"><span>1·35%</span><span>${d10}</span><span>₹${Utils.fmtNum(br1)}</span></div>
+              <div class="inst-mini-row"><span>2·35%</span><span>${d75}</span><span>₹${Utils.fmtNum(br2)}</span></div>
+              <div class="inst-mini-row"><span>3·30%</span><span>${d165}</span><span>₹${Utils.fmtNum(br3)}</span></div>
+            </div>
+            <div class="inst-mini inst-rr">
+              <div class="inst-mini-title">RR</div>
+              <div class="inst-mini-row hdr"><span>Part</span><span>Date</span><span>Amount</span></div>
+              <div class="inst-mini-row"><span>1·35%</span><span>${d10}</span><span>₹${Utils.fmtNum(rr1)}</span></div>
+              <div class="inst-mini-row"><span>2·35%</span><span>${d75}</span><span>₹${Utils.fmtNum(rr2)}</span></div>
+              <div class="inst-mini-row"><span>3·30%</span><span>${d165}</span><span>₹${Utils.fmtNum(rr3)}</span></div>
+            </div>
+            <div class="inst-mini inst-cr">
+              <div class="inst-mini-title">CR</div>
+              <div class="inst-mini-row hdr"><span>Part</span><span>Date</span><span>Amount</span></div>
+              <div class="inst-mini-row"><span>1·35%</span><span>${d10}</span><span>₹${Utils.fmtNum(cr1)}</span></div>
+              <div class="inst-mini-row"><span>2·35%</span><span>${d75}</span><span>₹${Utils.fmtNum(cr2)}</span></div>
+              <div class="inst-mini-row"><span>3·30%</span><span>${d165}</span><span>₹${Utils.fmtNum(cr3)}</span></div>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+    document.getElementById('scheduleContainer').innerHTML = schedHTML;
+    document.getElementById('installmentBox').style.display = 'block';
+    window._pgSchedule = { valid, d10, d75, d165, token, tokRR, tokCR, totalBR, totalRR, totalCR };
   }
 }
 
-// ── Grid view ─────────────────────────────────────
-function renderBplotGrid(plots) {
-  const grid = document.getElementById('bplotGrid');
-  if (!plots.length) { grid.innerHTML = '<div style="font-size:.8rem;color:var(--grey);padding:10px;">No plots</div>'; return; }
-  grid.innerHTML = plots.map(p => {
-    const status = p['Status'] || 'Available';
-    const cls    = status==='Available' ? 'av' : status==='Booked' ? 'bk' : 'rs';
-    const area   = p['Area SqFt'] ? p['Area SqFt']+'sqft' : p['Area SqM'] ? p['Area SqM']+'sqm' : '';
-    return `<button class="bplot-btn ${cls}" ${status!=='Available'?'disabled':''} data-plot="${p['Plot No']}" id="bp-${p['Plot No']}"
-      title="Plot ${p['Plot No']} · ${area}">
-      ${p['Plot No']}<br><small style="font-size:.58rem;font-weight:400;">${area}</small>
-    </button>`;
-  }).join('');
-  grid.querySelectorAll('.bplot-btn.av').forEach(btn => {
-    btn.addEventListener('click', () => selectBplot(btn.dataset.plot));
-  });
-}
+// ── SUBMIT ────────────────────────────────────────
+async function submitBooking() {
+  const name     = document.getElementById('f-name').value.trim();
+  const phone    = document.getElementById('f-phone').value.trim();
+  const bookdate = document.getElementById('f-bookdate').value;
+  const receipt1 = document.getElementById('f-receipt1').value.trim();
+  const paymode  = document.getElementById('f-paymode').value;
+  const token    = parseFloat(document.getElementById('f-token').value)||0;
+  const valid    = plotEntries.filter(e => e.plotNo && e.brAmt > 0);
 
-// ── SVG Map view ──────────────────────────────────
-function renderSvgMap() {
-  const svg = document.getElementById('layoutSvg');
-  if (!svg) return;
-  const plotStatus = {};
-  allPlots.forEach(p => { plotStatus[String(p['Plot No'])] = p['Status'] || 'Available'; });
-  const CW=36, RH=22, ROAD_H={'9M ROAD':11,'12M ROAD':15,'17M ROAD':20};
-  const PX=6, PY=8;
-  const maxCols = Math.max(...MAP_ROWS.map(r => r.plots.length));
-  let html='', y=PY;
-  MAP_ROWS.forEach(row => {
-    if (row.label) {
-      const rh=ROAD_H[row.label]||11;
-      const rc=row.label.startsWith('17')?'#b0bec5':row.label.startsWith('12')?'#cfd8dc':'#eceff1';
-      html+=`<rect x="${PX}" y="${y}" width="${maxCols*CW}" height="${rh}" fill="${rc}" rx="2"/>`;
-      html+=`<text x="${PX+maxCols*CW/2}" y="${y+rh/2+3}" text-anchor="middle" font-size="6.5" fill="#546e7a" font-family="Outfit,sans-serif">${row.label}</text>`;
-      y+=rh+2;
-    }
-    row.plots.forEach((pno,ci) => {
-      const status=plotStatus[pno]||'Unknown';
-      const isSel=String(pno)===String(selPlotNo);
-      const x=PX+ci*CW;
-      const fill=isSel?'#1b4332':status==='Available'?'#c8e6c9':status==='Booked'?'#ffcdd2':status==='Reserved'?'#fff9c4':'#eeeeee';
-      const stroke=isSel?'#52b788':'#b0bfc8';
-      const tc=isSel?'#fff':status==='Available'?'#1b5e20':status==='Booked'?'#b71c1c':'#e65100';
-      html+=`<g${status==='Available'?' data-svgplot="'+pno+'"':''} style="cursor:${status==='Available'?'pointer':'default'}">
-        <rect x="${x}" y="${y}" width="${CW-2}" height="${RH-2}" fill="${fill}" stroke="${stroke}" stroke-width="${isSel?2:.8}" rx="2"/>
-        <text x="${x+(CW-2)/2}" y="${y+RH/2+2}" text-anchor="middle" font-size="${pno.length>4?5:6}" fill="${tc}" font-family="Outfit,sans-serif" font-weight="${isSel?700:500}">${pno}</text>
-      </g>`;
-    });
-    y+=RH;
-  });
-  svg.setAttribute('viewBox',`0 0 ${maxCols*CW+PX*2} ${y+PY}`);
-  svg.innerHTML=html;
-  svg.querySelectorAll('[data-svgplot]').forEach(el => {
-    el.addEventListener('click', () => { selectBplot(el.dataset.svgplot); renderSvgMap(); });
-  });
-}
+  if (!name)     { Utils.toast('Customer name required','err'); return; }
+  if (!phone)    { Utils.toast('Phone required','err'); return; }
+  if (!bookdate) { Utils.toast('Booking date required','err'); return; }
+  if (!receipt1) { Utils.toast('Manual receipt number required','err'); return; }
+  if (!paymode)  { Utils.toast('Payment mode required','err'); return; }
+  if (!valid.length) { Utils.toast('Add at least one plot with rates','err'); return; }
 
-// ── Select plot ───────────────────────────────────
-function selectBplot(plotNo) {
-  if (selPlotNo) { const prev=document.getElementById('bp-'+selPlotNo); if(prev) prev.classList.remove('sel'); }
-  selPlotNo = String(plotNo);
-  const btn = document.getElementById('bp-'+selPlotNo);
-  if (btn) { btn.classList.add('sel'); btn.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+  const tokenSplits = getTokenSplits();
 
-  const p = allPlots.find(x => String(x['Plot No'])===selPlotNo);
-  if (!p) return;
-  selAreaSqft = Number(p['Area SqFt']) || 0;
-
-  // Update area display
-  document.getElementById('f-area').value = selAreaSqft ? selAreaSqft+' SqFt' : '—';
-
-  // Sidebar summary
-  const sqm=p['Area SqM'], sqft=p['Area SqFt'];
-  document.getElementById('psSummary').innerHTML = [
-    ['Plot No',  'Plot '+p['Plot No']],
-    ['Area SqM', sqm  ? sqm+' SqM'   : '—'],
-    ['Area SqFt',sqft ? sqft+' SqFt' : '—'],
-    ['Zone',     p['Zone']||'—'],
-    ['Corner',   p['Corner']==='Yes'?'★ Yes':'No'],
-  ].map(([l,v])=>
-    `<div class="ps-row"><span class="ps-label">${l}</span><span class="ps-value">${v}</span></div>`
-  ).join('');
-
-  // Trigger rate recalc with new area
-  document.getElementById('f-br').dispatchEvent(new Event('input'));
-  document.getElementById('submitBtn').disabled = false;
-}
-
-// ── Submit ────────────────────────────────────────
-async function submitBooking(e) {
-  e.preventDefault();
-  if (!selPlotNo) { Utils.toast('Please select a plot first','err'); return; }
-  const br = parseFloat(document.getElementById('f-br').value);
-  const rr = parseFloat(document.getElementById('f-rr').value);
-  if (!br || !rr) { Utils.toast('Enter BR and RR rates','err'); return; }
-  if (rr > br)    { Utils.toast('RR cannot be greater than BR','err'); return; }
-
-  const btn = document.getElementById('submitBtn');
-  btn.disabled=true; btn.textContent='⏳ Processing…';
-
-  const session = Auth.getSession();
-
-  // Convert date input (YYYY-MM-DD) to Indian format
-  const bdRaw = document.getElementById('f-bookdate').value;
-  const bdParts = bdRaw.split('-');
-  const bookingDate = bdParts.length===3 ? `${bdParts[2]}/${bdParts[1]}/${bdParts[0]}` : bdRaw;
-
-  const payload = {
-    action:'createBooking', plotNo:selPlotNo,
-    customerName: document.getElementById('f-name').value.trim(),
-    phone:        document.getElementById('f-phone').value.trim(),
-    aadhaar:      document.getElementById('f-aadhaar').value.trim(),
-    address:      document.getElementById('f-address').value.trim(),
-    bookingDate,
-    receiptNo1:   document.getElementById('f-receipt1').value.trim(),
-    tokenAmount:  document.getElementById('f-token').value,
-    paymentMode:  document.getElementById('f-paymode').value,
-    paymentRef:   document.getElementById('f-payref').value.trim(),
-    referredBy:   document.getElementById('f-refby').value.trim(),
-    remarks:      document.getElementById('f-remarks').value.trim(),
-    br, rr
-  };
+  const btn = document.getElementById('bookBtn');
+  btn.disabled=true; btn.textContent='Saving…';
 
   try {
-    const res = await API.post(payload);
+    const res = await API.post({
+      action: 'createMultiBooking',
+      customer: {
+        customerName: name, phone,
+        aadhaar:  document.getElementById('f-aadhaar').value.trim(),
+        address:  document.getElementById('f-address').value.trim(),
+        referredBy: document.getElementById('f-ref').value.trim(),
+      },
+      shared: {
+        bookingDate: bookdate.split('-').reverse().join('/'),
+        receiptNo1: receipt1, paymentMode: paymode,
+        paymentRef: document.getElementById('f-payref').value.trim(),
+        remarks:    document.getElementById('f-remarks').value.trim(),
+      },
+      plots: valid.map((e, i) => ({
+        plotNo: e.plotNo, br: e.br, rr: e.rr,
+        tokenAmount: tokenSplits[i] || 0
+      }))
+    });
     if (res.error) throw new Error(res.error);
-    lastBooking = { ...res, phone:payload.phone, paymentMode:payload.paymentMode };
-
-    document.getElementById('successReceiptNo').textContent = res.receiptNo;
-    document.getElementById('successDetails').innerHTML =
-      `<strong>${res.customerName}</strong><br>` +
-      `Plot ${res.plotNo} · ${res.areaSqft} SqFt<br>` +
-      `BR ₹${Utils.fmtNum(res.brAmt)} | RR ₹${Utils.fmtNum(res.rrAmt)} | CR ₹${Utils.fmtNum(res.crAmt)}<br>` +
-      `Token: ₹${Utils.fmtNum(res.tokenAmount)}<br>` +
-      `Date: ${res.bookingDate} · By: ${session.name||session.username}`;
-    Utils.openOverlay('successModal');
-
-    // Reset
-    document.getElementById('bookingForm').reset();
-    document.getElementById('f-bookdate').value = new Date().toISOString().split('T')[0];
-    const bBtn = document.getElementById('bp-'+selPlotNo);
-    if (bBtn) { bBtn.classList.remove('sel','av'); bBtn.classList.add('bk'); bBtn.disabled=true; }
-    selPlotNo=null; selAreaSqft=0;
-    document.getElementById('f-area').value='';
-    document.getElementById('f-cr').value='';
-    document.getElementById('rateSummary').style.display='none';
-    document.getElementById('installmentBox').style.display='none';
-    document.getElementById('psSummary').innerHTML='<div class="ps-empty">No plot selected.<br>Choose from the grid above.</div>';
-    document.getElementById('submitBtn').disabled=true;
-    if (document.getElementById('pickerMap').style.display!=='none') renderSvgMap();
-
-  } catch(err) { Utils.toast(err.message,'err'); }
-  finally { btn.disabled=false; btn.textContent='📋 Confirm Booking'; }
+    lastBooking = res;
+    showConfirmation(res);
+  } catch(e) {
+    Utils.toast(e.message,'err');
+  } finally {
+    btn.disabled=false; btn.textContent='📋 Book Plot(s)';
+  }
 }
 
-// ── WhatsApp share ────────────────────────────────
+function showConfirmation(res) {
+  const html = `
+    <div class="confirm-customer">
+      <strong>${res.customerName}</strong> &nbsp;·&nbsp; ${res.phone||''}
+      &nbsp;·&nbsp; ${res.bookingDate}
+    </div>
+    <table class="data-table" style="margin-top:14px;font-size:.82rem;">
+      <thead><tr><th>Receipt</th><th>Plot</th><th>Area</th><th>BR Amt</th><th>RR Amt</th><th>CR Amt</th><th>Token</th></tr></thead>
+      <tbody>
+        ${res.results.map(r=>`<tr>
+          <td><strong>${r.receiptNo}</strong></td>
+          <td>Plot ${r.plotNo}</td>
+          <td>${r.areaSqft} SqFt</td>
+          <td>₹${Utils.fmtNum(r.brAmt)}</td>
+          <td>₹${Utils.fmtNum(r.rrAmt)}</td>
+          <td>₹${Utils.fmtNum(r.crAmt)}</td>
+          <td>₹${Utils.fmtNum(r.tokenAmount)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="margin-top:10px;font-size:.8rem;color:var(--grey);">
+      Mode: ${res.paymentMode} &nbsp;·&nbsp; Manual Receipt: ${res.receiptNo1||'—'}
+    </div>`;
+  document.getElementById('confirmContent').innerHTML = html;
+  Utils.openOverlay('confirmOverlay');
+  document.getElementById('shareWA').onclick = shareWhatsApp;
+}
+
 function shareWhatsApp() {
   if (!lastBooking) return;
-  const b = lastBooking;
+  const r = lastBooking;
   const s = window._pgSchedule;
+  let plotLines = r.results.map(p =>
+    `📍 Plot ${p.plotNo} · ${p.areaSqft} SqFt\n`+
+    `   BR ₹${Utils.fmtNum(p.brAmt)} · RR ₹${Utils.fmtNum(p.rrAmt)} · CR ₹${Utils.fmtNum(p.crAmt)}\n`+
+    `   Token: ₹${Utils.fmtNum(p.tokenAmount)}`
+  ).join('\n\n');
 
-  let scheduleText = '';
-  if (s) {
-    const tokBRLine = s.tokBR>0 ? `   Token paid: −₹${Utils.fmtNum(s.tokBR)}\n` : '';
-    const tokRRLine = s.tokRR>0 ? `   Token paid: −₹${Utils.fmtNum(s.tokRR)}\n` : '';
-    const tokCRLine = s.tokCR>0 ? `   Token paid: −₹${Utils.fmtNum(s.tokCR)}\n` : '';
-    scheduleText =
-      `\n📊 *Installment Schedule*\n`+
-      `\n*BR Amount: ₹${Utils.fmtNum(s.brAmt)}*\n`+
-      `  Part 1 (35%) · ${s.d10}: ₹${Utils.fmtNum(s.br1)}\n`+
-      `  Part 2 (35%) · ${s.d75}: ₹${Utils.fmtNum(s.br2)}\n`+
-      `  Part 3 (30%) · ${s.d165}: ₹${Utils.fmtNum(s.br3)}\n`+
-      tokBRLine+
-      `\n*RR Amount: ₹${Utils.fmtNum(s.rrAmt)}*\n`+
-      `  Part 1 (35%) · ${s.d10}: ₹${Utils.fmtNum(s.rr1)}\n`+
-      `  Part 2 (35%) · ${s.d75}: ₹${Utils.fmtNum(s.rr2)}\n`+
-      `  Part 3 (30%) · ${s.d165}: ₹${Utils.fmtNum(s.rr3)}\n`+
-      tokRRLine+
-      `\n*CR Amount: ₹${Utils.fmtNum(s.crAmt)}*\n`+
-      `  Part 1 (35%) · ${s.d10}: ₹${Utils.fmtNum(s.cr1)}\n`+
-      `  Part 2 (35%) · ${s.d75}: ₹${Utils.fmtNum(s.cr2)}\n`+
-      `  Part 3 (30%) · ${s.d165}: ₹${Utils.fmtNum(s.cr3)}\n`+
-      tokCRLine;
+  let schedLines = '';
+  if (s && s.valid) {
+    schedLines = '\n\n📊 *Installment Schedule*\n';
+    s.valid.forEach(e => {
+      const rr1=Math.round(e.rrAmt*.35), rr2=Math.round(e.rrAmt*.35), rr3=e.rrAmt-rr1-rr2;
+      const cr1=Math.round(e.crAmt*.35), cr2=Math.round(e.crAmt*.35), cr3=e.crAmt-cr1-cr2;
+      schedLines +=
+        `\n*Plot ${e.plotNo}*\n`+
+        `RR: ₹${Utils.fmtNum(rr1)} · ${s.d10} | ₹${Utils.fmtNum(rr2)} · ${s.d75} | ₹${Utils.fmtNum(rr3)} · ${s.d165}\n`+
+        `CR: ₹${Utils.fmtNum(cr1)} · ${s.d10} | ₹${Utils.fmtNum(cr2)} · ${s.d75} | ₹${Utils.fmtNum(cr3)} · ${s.d165}`;
+    });
   }
 
   const msg =
     `🌿 *Padmavati Greens* – Booking Confirmation\n\n`+
-    `📋 Receipt No: ${b.receiptNo}\n`+
-    `👤 Name: ${b.customerName}\n`+
-    `📱 Mobile: ${b.phone||'—'}\n`+
-    `📍 Plot No: ${b.plotNo} · ${b.areaSqft||''} SqFt\n`+
-    `💰 Token Amount: ₹${Utils.fmtNum(b.tokenAmount)}\n`+
-    `💳 Payment Mode: ${b.paymentMode||'—'}\n`+
-    `📅 Booking Date: ${b.bookingDate}`+
-    scheduleText+
+    `👤 ${r.customerName} · 📅 ${r.bookingDate}\n`+
+    `📝 Manual Receipt: ${r.receiptNo1||'—'} · Mode: ${r.paymentMode}\n\n`+
+    plotLines + schedLines +
     `\n\nLayout No. 712 · Survey No. 274 · Yavatmal`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function resetForm() {
+  document.getElementById('f-name').value='';
+  document.getElementById('f-phone').value='';
+  document.getElementById('f-aadhaar').value='';
+  document.getElementById('f-address').value='';
+  document.getElementById('f-ref').value='';
+  document.getElementById('f-receipt1').value='';
+  document.getElementById('f-payref').value='';
+  document.getElementById('f-remarks').value='';
+  document.getElementById('f-token').value='';
+  document.getElementById('f-paymode').value='';
+  document.getElementById('f-bookdate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('plotsContainer').innerHTML='';
+  plotEntries=[]; plotCounter=0; lastBooking=null;
+  addPlotRow();
+  document.getElementById('summaryEmpty').style.display='block';
+  document.getElementById('summaryContent').style.display='none';
 }

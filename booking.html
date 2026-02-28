@@ -3,222 +3,119 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Book a Plot – Padmavati Greens</title>
+<title>Book Plot – Padmavati Greens</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
-  <script>
-    (function(){
-      try { var s=JSON.parse(localStorage.getItem('pg_session')); if(!s||!s.token){window.location.replace('login.html');} }
-      catch(e){ window.location.replace('login.html'); }
-    })();
-  </script>
 </head>
 <body>
-
 <div class="page-wrap">
-  <div class="page-title">Book a Plot</div>
-  <div class="page-sub">Select a plot, enter rates and customer details</div>
-
   <div class="booking-layout">
-    <!-- Left column -->
-    <div>
 
-      <!-- Plot picker -->
-      <div class="card" style="margin-bottom:18px;">
-        <div class="card-title">Select a Plot</div>
-        <div class="picker-tabs">
-          <button class="picker-tab active" data-view="grid">☰ Grid View</button>
-          <button class="picker-tab" data-view="map">🗺 Map View</button>
-        </div>
-        <div id="pickerGrid" class="picker-panel">
-          <div style="font-size:.8rem;color:var(--grey);margin:10px 0 8px;">Tap any green plot to select</div>
-          <div id="bplotGrid" class="bplot-grid"><div class="loading-block"><div class="spinner"></div></div></div>
-        </div>
-        <div id="pickerMap" class="picker-panel" style="display:none;">
-          <div style="font-size:.8rem;color:var(--grey);margin:10px 0 8px;">Tap a green plot · Scroll to zoom</div>
-          <div class="map-legend">
-            <span class="ml ml-av">■ Available</span>
-            <span class="ml ml-bk">■ Booked</span>
-            <span class="ml ml-rs">■ Reserved</span>
-            <span class="ml ml-sel">■ Selected</span>
-          </div>
-          <div class="map-viewport" id="mapViewport">
-            <svg id="layoutSvg" class="layout-svg" viewBox="0 0 1100 1380" xmlns="http://www.w3.org/2000/svg"></svg>
-          </div>
-        </div>
-      </div>
+    <!-- LEFT: Form -->
+    <div class="booking-form-col">
+      <div class="page-title">Book Plot</div>
 
-      <!-- Rate calculator -->
-      <div class="card" style="margin-bottom:18px;">
-        <div class="card-title">Rate Calculator</div>
-        <div class="card-sub">Enter BR and RR — CR and amounts calculate automatically</div>
+      <!-- Customer Info -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-title">Customer Information</div>
         <div class="form-row">
-          <div class="fg">
-            <label>BR (per sqft) <span class="req">*</span></label>
-            <input type="number" id="f-br" placeholder="e.g. 2500" min="0" step="1">
-          </div>
-          <div class="fg">
-            <label>RR (per sqft) <span class="req">*</span></label>
-            <input type="number" id="f-rr" placeholder="e.g. 1800" min="0" step="1">
-          </div>
+          <div class="fg"><label>Full Name <span class="req">*</span></label>
+            <input type="text" id="f-name" placeholder="e.g. Ramesh Sharma"></div>
+          <div class="fg"><label>Phone <span class="req">*</span></label>
+            <input type="tel" id="f-phone" placeholder="10-digit mobile"></div>
         </div>
         <div class="form-row">
-          <div class="fg">
-            <label>CR (per sqft) <span class="hint">auto = BR − RR</span></label>
-            <input type="number" id="f-cr" readonly placeholder="—" style="background:var(--mist);color:var(--grey);">
-          </div>
-          <div class="fg">
-            <label>Area SqFt</label>
-            <input type="text" id="f-area" readonly placeholder="Select a plot first" style="background:var(--mist);color:var(--grey);">
-          </div>
+          <div class="fg"><label>Aadhaar Number</label>
+            <input type="text" id="f-aadhaar" placeholder="12-digit"></div>
+          <div class="fg"><label>Referred By</label>
+            <input type="text" id="f-ref" placeholder="Name or agent"></div>
         </div>
-        <!-- Amount summary strip -->
-        <div class="rate-summary" id="rateSummary" style="display:none;">
-          <div class="rs-item">
-            <div class="rs-label">BR Amount</div>
-            <div class="rs-val" id="rs-br">—</div>
-          </div>
-          <div class="rs-sep">+</div>
-          <div class="rs-item">
-            <div class="rs-label">RR Amount</div>
-            <div class="rs-val rs-rr" id="rs-rr">—</div>
-          </div>
-          <div class="rs-sep">+</div>
-          <div class="rs-item">
-            <div class="rs-label">CR Amount</div>
-            <div class="rs-val rs-cr" id="rs-cr">—</div>
-          </div>
-        </div>
+        <div class="fg"><label>Address</label>
+          <input type="text" id="f-address" placeholder="Full address"></div>
       </div>
 
-      <!-- Customer form -->
-      <div class="card">
-        <div class="card-title">Customer Details</div>
-        <div class="card-sub">Fields marked <span style="color:var(--red)">*</span> are required</div>
-        <form id="bookingForm">
-          <div class="form-row">
-            <div class="fg">
-              <label>Full Name <span class="req">*</span></label>
-              <input type="text" id="f-name" required placeholder="As per Aadhaar">
-            </div>
-            <div class="fg">
-              <label>Phone Number <span class="req">*</span></label>
-              <input type="tel" id="f-phone" required placeholder="10-digit mobile">
-            </div>
-          </div>
+      <!-- Booking Info -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-title">Booking Details</div>
+        <div class="form-row">
+          <div class="fg"><label>Booking Date <span class="req">*</span></label>
+            <input type="date" id="f-bookdate"></div>
+          <div class="fg"><label>Manual Receipt No <span class="req">*</span></label>
+            <input type="text" id="f-receipt1" placeholder="e.g. 1225"></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label>Payment Mode <span class="req">*</span></label>
+            <select id="f-paymode">
+              <option value="">Select…</option>
+              <option>Cash</option><option>NEFT / RTGS</option>
+              <option>UPI</option><option>Cheque</option><option>DD</option>
+            </select></div>
+          <div class="fg"><label>Payment Reference</label>
+            <input type="text" id="f-payref" placeholder="UTR / cheque no."></div>
+        </div>
+        <div class="fg"><label>Remarks</label>
+          <input type="text" id="f-remarks" placeholder="Optional"></div>
+      </div>
 
-          <div class="fg">
-            <label>Aadhaar Number</label>
-            <input type="text" id="f-aadhaar" placeholder="XXXX XXXX XXXX" maxlength="14">
-          </div>
+      <!-- Plots Section -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-title-row">
+          <div class="card-title" style="margin:0;">Plots</div>
+          <button type="button" class="btn-add-plot" id="addPlotBtn">+ Add Plot</button>
+        </div>
+        <div id="plotsContainer"></div>
+      </div>
 
-          <div class="fg">
-            <label>Address</label>
-            <textarea id="f-address" placeholder="Full postal address"></textarea>
+      <!-- Token -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-title">Token Amount</div>
+        <div class="form-row">
+          <div class="fg"><label>Total Token Amount (₹) <span class="req">*</span></label>
+            <input type="number" id="f-token" placeholder="e.g. 30000" min="0"></div>
+          <div class="fg" id="tokenSplitInfo" style="display:none;">
+            <label>Split (equal default — editable)</label>
+            <div id="tokenSplitFields"></div>
           </div>
+        </div>
+        <div class="pay-hint">Cash → CR &nbsp;|&nbsp; All other modes → RR &nbsp;|&nbsp; Token split equally by default</div>
+      </div>
 
-          <div class="form-row">
-            <div class="fg">
-              <label>Booking Date <span class="req">*</span></label>
-              <input type="date" id="f-bookdate" required>
-            </div>
-            <div class="fg">
-              <label>Receipt Number 1 <span class="hint">(physical)</span></label>
-              <input type="text" id="f-receipt1" placeholder="Manual receipt no.">
-            </div>
+      <button class="btn-submit" id="bookBtn">📋 Book Plot(s)</button>
+    </div>
+
+    <!-- RIGHT: Summary -->
+    <div class="booking-summary-col">
+      <div class="card sticky-summary" id="summaryCard">
+        <div class="card-title">Booking Summary</div>
+        <div id="summaryEmpty" style="color:var(--grey);font-size:.85rem;padding:20px 0;text-align:center;">
+          Add plot(s) and enter rates to see summary
+        </div>
+        <div id="summaryContent" style="display:none;">
+          <div id="plotsSummaryList"></div>
+          <div class="summary-divider"></div>
+          <div id="totalsSummary"></div>
+          <div id="installmentBox" style="margin-top:16px;display:none;">
+            <div class="card-title" style="font-size:.9rem;margin-bottom:10px;">Installment Schedule</div>
+            <div id="scheduleContainer"></div>
           </div>
-
-          <div class="form-row">
-            <div class="fg">
-              <label>Token Amount (₹) <span class="req">*</span></label>
-              <input type="number" id="f-token" required placeholder="e.g. 50000" min="1">
-            </div>
-            <div class="fg">
-              <label>Payment Mode <span class="req">*</span></label>
-              <select id="f-paymode" required>
-                <option value="">Select…</option>
-                <option>Cash</option>
-                <option>NEFT / RTGS</option>
-                <option>UPI</option>
-                <option>Cheque</option>
-                <option>DD</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="fg">
-            <label>Payment Reference</label>
-            <input type="text" id="f-payref" placeholder="UTR / cheque no / UPI ref">
-          </div>
-
-          <div class="fg">
-            <label>Referred By</label>
-            <input type="text" id="f-refby" placeholder="Name of referrer (optional)">
-          </div>
-
-          <div class="fg">
-            <label>Remarks</label>
-            <textarea id="f-remarks" placeholder="Any additional notes…"></textarea>
-          </div>
-
-          <button type="submit" class="btn-submit" id="submitBtn" disabled>📋 Confirm Booking</button>
-        </form>
+        </div>
       </div>
     </div>
 
-    <!-- Sidebar -->
-    <div class="booking-sidebar">
-      <div class="plot-summary" id="plotSummaryBox">
-        <div class="ps-title">Selected Plot</div>
-        <div id="psSummary"><div class="ps-empty">No plot selected.<br>Choose from the grid above.</div></div>
-      </div>
-
-      <!-- Installment breakdown — shown after rates entered -->
-      <div class="card" id="installmentBox" style="margin-top:14px;display:none;">
-        <div class="card-title" style="font-size:1rem;">Installment Schedule</div>
-
-        <div class="inst-section">
-          <div class="inst-head" style="color:#7b1fa2;">BR Installments</div>
-          <div class="inst-row"><span>Part 1 (35%) · +10 days</span><span id="br-p1">—</span></div>
-          <div class="inst-row"><span>Part 2 (35%) · +75 days</span><span id="br-p2">—</span></div>
-          <div class="inst-row"><span>Part 3 (30%) · +165 days</span><span id="br-p3">—</span></div>
-          <div class="inst-row inst-bal"><span>Token deducted</span><span id="br-tok">—</span></div>
-          <div class="inst-row inst-total"><span>BR Balance</span><span id="br-bal">—</span></div>
-        </div>
-
-        <div class="inst-section" style="margin-top:12px;">
-          <div class="inst-head rr-head">RR Installments</div>
-          <div class="inst-row"><span>Part 1 (35%) · +10 days</span><span id="rr-p1">—</span></div>
-          <div class="inst-row"><span>Part 2 (35%) · +75 days</span><span id="rr-p2">—</span></div>
-          <div class="inst-row"><span>Part 3 (30%) · +165 days</span><span id="rr-p3">—</span></div>
-          <div class="inst-row inst-bal"><span>Token deducted</span><span id="rr-tok">—</span></div>
-          <div class="inst-row inst-total"><span>RR Balance</span><span id="rr-bal">—</span></div>
-        </div>
-
-        <div class="inst-section" style="margin-top:12px;">
-          <div class="inst-head cr-head">CR Installments</div>
-          <div class="inst-row"><span>Part 1 (35%) · +10 days</span><span id="cr-p1">—</span></div>
-          <div class="inst-row"><span>Part 2 (35%) · +75 days</span><span id="cr-p2">—</span></div>
-          <div class="inst-row"><span>Part 3 (30%) · +165 days</span><span id="cr-p3">—</span></div>
-          <div class="inst-row inst-bal"><span>Token deducted</span><span id="cr-tok">—</span></div>
-          <div class="inst-row inst-total"><span>CR Balance</span><span id="cr-bal">—</span></div>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 
-<!-- Success Modal -->
-<div class="overlay" id="successModal">
-  <div class="modal modal-success">
-    <div class="success-icon">✅</div>
-    <h3>Booking Confirmed!</h3>
-    <div id="successReceiptNo" class="success-receipt"></div>
-    <div id="successDetails" class="success-details"></div>
-    <div class="btn-row">
-      <button class="btn-sec" id="waShareBtn">📲 Share on WhatsApp</button>
-      <button class="btn-prim" data-close="successModal">Done</button>
+<!-- Confirmation Modal -->
+<div class="overlay" id="confirmOverlay" style="display:none;">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-title">✅ Booking Confirmed</div>
+    <div id="confirmContent"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
+      <button class="btn-submit" id="shareWA" style="background:#25D366;">📱 WhatsApp</button>
+      <button class="btn-submit" onclick="window.print()" style="background:var(--forest-mid);">🖨 Print</button>
+      <button class="btn-submit" id="newBookingBtn" style="background:var(--grey);">+ New Booking</button>
+      <a href="bookings.html" class="btn-submit" style="text-decoration:none;text-align:center;background:var(--forest);">View Bookings</a>
     </div>
   </div>
 </div>
