@@ -1733,3 +1733,11 @@ header {
 }
 .res-amounts     { display:flex;gap:8px;flex-wrap:wrap;margin-top:10px; }
 .res-card-rates  { display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px; }
+
+/* Reserve — installment schedule in card */
+.res-schedule    { margin-top:10px; border-top:1px solid var(--border); padding-top:10px; }
+.res-sch-title   { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--grey); margin-bottom:6px; }
+.res-sch-table   { width:100%; border-collapse:collapse; font-size:.74rem; }
+.res-sch-table th { background:var(--mist); padding:4px 8px; text-align:left; font-weight:600; color:var(--grey); font-size:.68rem; text-transform:uppercase; }
+.res-sch-table td { padding:4px 8px; border-bottom:1px solid var(--border); }
+.res-sch-table tr:last-child td { border-bottom:none; }

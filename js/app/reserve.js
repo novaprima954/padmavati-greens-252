@@ -238,6 +238,26 @@ async function loadReservations() {
   }
 }
 
+function resListClickHandler(e) {
+  const convertBtn = e.target.closest('.btn-convert');
+  const cancelBtn  = e.target.closest('.btn-cancel-res');
+  if (convertBtn) {
+    openConvertModal({
+      resID:        convertBtn.dataset.id,
+      plotNo:       convertBtn.dataset.plot,
+      customerName: convertBtn.dataset.name,
+      phone:        convertBtn.dataset.phone,
+      address:      convertBtn.dataset.address || ''
+    });
+  } else if (cancelBtn) {
+    openCancelModal({
+      resID:        cancelBtn.dataset.id,
+      plotNo:       cancelBtn.dataset.plot,
+      customerName: cancelBtn.dataset.name
+    });
+  }
+}
+
 function renderReservations(rows) {
   const el = document.getElementById('reservationsList');
   if (!rows || !rows.length) {
@@ -245,7 +265,7 @@ function renderReservations(rows) {
     return;
   }
 
-  const order = { Active:0, Expired:1, Cancelled:2, Converted:3 };
+  const order = { Active:0, Expired:1, Cancelled:2, Converted:99 };
   rows.sort((a,b) => (order[a['Status']]||9)-(order[b['Status']]||9));
 
   // Group by Reservation ID (multi-plot reservations share same ID prefix)
@@ -263,11 +283,37 @@ function renderReservations(rows) {
 
     // Rate summary if present
     const brAmt = Number(r['BR Amount'])||0, rrAmt = Number(r['RR Amount'])||0, crAmt = Number(r['CR Amount'])||0;
+    // Rate chips
     const rateRow = brAmt>0 ? `<div class="res-card-rates">
       <span class="pec-amt-chip br-chip" style="font-size:.65rem;">BR ₹${Utils.fmtNum(brAmt)}</span>
       <span class="pec-amt-chip rr-chip2" style="font-size:.65rem;">RR ₹${Utils.fmtNum(rrAmt)}</span>
       <span class="pec-amt-chip cr-chip2" style="font-size:.65rem;">CR ₹${Utils.fmtNum(crAmt)}</span>
     </div>` : '';
+
+    // Installment schedule — only if we have amounts
+    let scheduleRow = '';
+    if (brAmt > 0) {
+      const resDateStr = String(r['Reserved At']||'').split(' ')[0]; // dd/mm/yyyy
+      const dp = resDateStr.split('/');
+      const bd = dp.length===3 ? new Date(+dp[2],+dp[1]-1,+dp[0]) : new Date();
+      function addD(d,n){ const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
+      function fmtD(d){ return d.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+      const d10=fmtD(addD(bd,10)), d75=fmtD(addD(bd,75)), d165=fmtD(addD(bd,165));
+      const br1=Math.round(brAmt*.35), br2=Math.round(brAmt*.35), br3=brAmt-br1-br2;
+      const rr1=Math.round(rrAmt*.35), rr2=Math.round(rrAmt*.35), rr3=rrAmt-rr1-rr2;
+      const cr1=Math.round(crAmt*.35), cr2=Math.round(crAmt*.35), cr3=crAmt-cr1-cr2;
+      scheduleRow = `<div class="res-schedule">
+        <div class="res-sch-title">Installment Schedule</div>
+        <table class="res-sch-table">
+          <thead><tr><th>Part</th><th>Due Date</th><th>BR</th><th>RR</th><th>CR</th></tr></thead>
+          <tbody>
+            <tr><td>1 · 35%</td><td>${d10}</td><td>₹${Utils.fmtNum(br1)}</td><td>₹${Utils.fmtNum(rr1)}</td><td>₹${Utils.fmtNum(cr1)}</td></tr>
+            <tr><td>2 · 35%</td><td>${d75}</td><td>₹${Utils.fmtNum(br2)}</td><td>₹${Utils.fmtNum(rr2)}</td><td>₹${Utils.fmtNum(cr2)}</td></tr>
+            <tr><td>3 · 30%</td><td>${d165}</td><td>₹${Utils.fmtNum(br3)}</td><td>₹${Utils.fmtNum(rr3)}</td><td>₹${Utils.fmtNum(cr3)}</td></tr>
+          </tbody>
+        </table>
+      </div>`;
+    }
 
     return `<div class="res-card ${isActive?'res-card-active':''} ${urgent?'res-card-urgent':''}">
       <div class="res-card-head">
@@ -281,6 +327,7 @@ function renderReservations(rows) {
         ⏱ Expires: ${r['Expiry Date']||''} ${r['Expiry Time']||''}
         ${isActive?`<span class="res-timeleft">${timeLeft}</span>`:''}
       </div>
+      ${scheduleRow}
       ${r['Notes']?`<div class="res-card-notes">${r['Notes']}</div>`:''}
       ${!isActive&&r['Released At']?`<div class="res-card-meta" style="margin-top:4px;">${status} · ${r['Released At']} by ${r['Released By']||'—'}</div>`:''}
       ${isActive?`<div class="res-card-actions">
@@ -300,18 +347,9 @@ function renderReservations(rows) {
     </div>`;
   }).join('');
 
-  // Wire buttons AFTER innerHTML is set
-  el.querySelectorAll('.btn-convert').forEach(btn => {
-    btn.addEventListener('click', () => openConvertModal({
-      resID:btn.dataset.id, plotNo:btn.dataset.plot,
-      customerName:btn.dataset.name, phone:btn.dataset.phone, address:btn.dataset.address
-    }));
-  });
-  el.querySelectorAll('.btn-cancel-res').forEach(btn => {
-    btn.addEventListener('click', () => openCancelModal({
-      resID:btn.dataset.id, plotNo:btn.dataset.plot, customerName:btn.dataset.name
-    }));
-  });
+  // Use event delegation — one listener on container, handles all dynamic buttons
+  el.removeEventListener('click', resListClickHandler);
+  el.addEventListener('click', resListClickHandler);
 }
 
 // ── CONVERT ───────────────────────────────────────
