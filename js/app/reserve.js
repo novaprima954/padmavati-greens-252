@@ -1,13 +1,14 @@
 // js/app/reserve.js
 Auth.requireAuth();
 
-let availablePlots = [];
-let selectedPlotNo = null;
-let pendingConvert = null;  // {resID, plotNo, customerName, phone}
-let pendingCancel  = null;
+let availablePlots  = [];
+let selectedPlots   = [];   // [{plotNo, area, br, rr, cr, brAmt, rrAmt, crAmt}]
+let pendingConvert  = null;
+let pendingCancel   = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   Header.init('reserve');
+  Utils.setupOverlays();
 
   // Default expiry: tomorrow 18:00
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -23,19 +24,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadAvailablePlots();
   loadReservations();
-
-  // Auto-refresh every 2 minutes to catch expiries
   setInterval(loadReservations, 120000);
 });
 
-// ── PLOT GRID ─────────────────────────────────────
+// ── PLOT GRID (multi-select) ──────────────────────
 async function loadAvailablePlots() {
   try {
     const data = await API.get({ action: 'getPlots' });
     if (data.error) throw new Error(data.error);
-    availablePlots = (data.plots || []).filter(p =>
-      p['Status'] === 'Available' || p['Status'] === 'Reserved'
-    );
+    availablePlots = (data.plots || []).filter(p => p['Status'] === 'Available');
     renderPlotGrid();
   } catch(e) {
     document.getElementById('resPickerStatus').textContent = 'Error loading plots';
@@ -45,39 +42,115 @@ async function loadAvailablePlots() {
 function renderPlotGrid() {
   const grid   = document.getElementById('resPlotGrid');
   const status = document.getElementById('resPickerStatus');
-  const avail  = availablePlots.filter(p => p['Status'] === 'Available');
-  status.textContent = avail.length + ' available';
+  status.textContent = availablePlots.length + ' available';
 
-  if (!avail.length) {
+  if (!availablePlots.length) {
     grid.innerHTML = '<div style="color:var(--grey);font-size:.85rem;padding:12px 0;">No available plots</div>';
     return;
   }
 
-  grid.innerHTML = avail.map(p => {
+  grid.innerHTML = availablePlots.map(p => {
     const plotNo = String(p['Plot No']);
     const area   = p['Area SqFt'] || '';
-    return `<div class="pgrid-cell" data-plot="${plotNo}" data-area="${area}" title="Plot ${plotNo} · ${area} SqFt">
+    const sel    = selectedPlots.find(s => s.plotNo === plotNo);
+    return `<div class="pgrid-cell${sel?' pgrid-selected':''}" data-plot="${plotNo}" data-area="${area}"
+      title="Plot ${plotNo} · ${area} SqFt">
       <div class="pgrid-no">${plotNo}</div>
       <div class="pgrid-area">${area}</div>
     </div>`;
   }).join('');
 
   grid.querySelectorAll('.pgrid-cell').forEach(cell => {
-    cell.addEventListener('click', () => {
-      // Deselect previous
-      grid.querySelectorAll('.pgrid-cell').forEach(c => c.classList.remove('pgrid-selected'));
-      if (selectedPlotNo === cell.dataset.plot) {
-        selectedPlotNo = null;
-        document.getElementById('resSelectedPlot').style.display = 'none';
-      } else {
-        cell.classList.add('pgrid-selected');
-        selectedPlotNo = cell.dataset.plot;
-        const selDiv = document.getElementById('resSelectedPlot');
-        selDiv.style.display = 'flex';
-        selDiv.innerHTML = `<span class="res-sel-check">✓</span> Plot <strong>${cell.dataset.plot}</strong> selected &nbsp;·&nbsp; ${cell.dataset.area} SqFt`;
-      }
-    });
+    cell.addEventListener('click', () => togglePlot(cell));
   });
+}
+
+function togglePlot(cell) {
+  const plotNo = cell.dataset.plot;
+  const area   = parseFloat(cell.dataset.area) || 0;
+  const exists = selectedPlots.findIndex(s => s.plotNo === plotNo);
+
+  if (exists >= 0) {
+    // Deselect
+    selectedPlots.splice(exists, 1);
+    cell.classList.remove('pgrid-selected');
+    const card = document.querySelector(`.res-rate-card[data-plot="${plotNo}"]`);
+    if (card) card.remove();
+  } else {
+    // Select
+    selectedPlots.push({ plotNo, area, br:0, rr:0, cr:0, brAmt:0, rrAmt:0, crAmt:0 });
+    cell.classList.add('pgrid-selected');
+    addRateCard(plotNo, area);
+  }
+}
+
+function addRateCard(plotNo, area) {
+  const container = document.getElementById('resPlotRates');
+
+  // Insert card in sorted order by plotNo
+  const card = document.createElement('div');
+  card.className = 'card res-rate-card';
+  card.dataset.plot = plotNo;
+  card.style.marginTop = '14px';
+  card.innerHTML = `
+    <div class="pec-header">
+      <span class="pec-num">Plot ${plotNo} &nbsp;·&nbsp; ${area} SqFt</span>
+    </div>
+    <div class="form-row">
+      <div class="fg">
+        <label>BR Rate (₹/sqft) <span class="req">*</span></label>
+        <input type="number" class="res-br" data-plot="${plotNo}" placeholder="e.g. 295" min="0">
+      </div>
+      <div class="fg">
+        <label>RR Rate (₹/sqft) <span class="req">*</span></label>
+        <input type="number" class="res-rr" data-plot="${plotNo}" placeholder="e.g. 170" min="0">
+      </div>
+      <div class="fg">
+        <label>CR Rate (auto)</label>
+        <div class="res-cr-display" id="res-cr-${plotNo}">—</div>
+      </div>
+    </div>
+    <div class="res-amounts" id="res-amounts-${plotNo}" style="display:none;">
+      <div class="pec-amt-chip br-chip">BR ₹<span id="res-bramt-${plotNo}">0</span></div>
+      <div class="pec-amt-chip rr-chip2">RR ₹<span id="res-rramt-${plotNo}">0</span></div>
+      <div class="pec-amt-chip cr-chip2">CR ₹<span id="res-cramt-${plotNo}">0</span></div>
+    </div>`;
+  container.appendChild(card);
+
+  // Wire rate inputs
+  card.querySelectorAll('.res-br, .res-rr').forEach(inp => {
+    inp.addEventListener('input', () => recalcRate(plotNo, area));
+  });
+}
+
+function recalcRate(plotNo, area) {
+  const brEl = document.querySelector(`.res-br[data-plot="${plotNo}"]`);
+  const rrEl = document.querySelector(`.res-rr[data-plot="${plotNo}"]`);
+  const br   = parseFloat(brEl?.value) || 0;
+  const rr   = parseFloat(rrEl?.value) || 0;
+  const cr   = Math.max(0, br - rr);
+
+  const brAmt = Math.round(br * area);
+  const rrAmt = Math.round(rr * area);
+  const crAmt = Math.round(cr * area);
+
+  // Update display
+  const crDisp = document.getElementById(`res-cr-${plotNo}`);
+  if (crDisp) crDisp.textContent = cr > 0 ? `₹${cr}/sqft` : '—';
+
+  const amtDiv = document.getElementById(`res-amounts-${plotNo}`);
+  if (amtDiv && brAmt > 0) {
+    amtDiv.style.display = 'flex';
+    document.getElementById(`res-bramt-${plotNo}`).textContent = Utils.fmtNum(brAmt);
+    document.getElementById(`res-rramt-${plotNo}`).textContent = Utils.fmtNum(rrAmt);
+    document.getElementById(`res-cramt-${plotNo}`).textContent = Utils.fmtNum(crAmt);
+  } else if (amtDiv) {
+    amtDiv.style.display = 'none';
+  }
+
+  // Update selectedPlots entry
+  const entry = selectedPlots.find(s => s.plotNo === plotNo);
+  if (entry) { entry.br=br; entry.rr=rr; entry.cr=cr; entry.brAmt=brAmt; entry.rrAmt=rrAmt; entry.crAmt=crAmt; }
 }
 
 function updateExpiryHint() {
@@ -86,40 +159,38 @@ function updateExpiryHint() {
   const hint = document.getElementById('resExpiryHint');
   if (!d) { hint.textContent = ''; return; }
   const dp = d.split('-');
-  const dt = new Date(parseInt(dp[0]), parseInt(dp[1])-1, parseInt(dp[2]),
-                      parseInt(t.split(':')[0]), parseInt(t.split(':')[1]));
-  const now  = new Date();
-  const diff = dt - now;
+  const dt = new Date(+dp[0], +dp[1]-1, +dp[2], +t.split(':')[0], +t.split(':')[1]);
+  const diff = dt - new Date();
   if (diff <= 0) { hint.textContent = '⚠ Expiry is in the past'; hint.style.color='var(--red)'; return; }
-  const hrs  = Math.floor(diff / 3600000);
-  const mins = Math.floor((diff % 3600000) / 60000);
-  const days = Math.floor(hrs / 24);
-  hint.style.color = 'var(--grey)';
-  hint.textContent = days > 0
-    ? `Plot will be held for ${days}d ${hrs%24}h from now`
-    : `Plot will be held for ${hrs}h ${mins}m from now`;
+  const hrs=Math.floor(diff/3600000), days=Math.floor(hrs/24), mins=Math.floor((diff%3600000)/60000);
+  hint.style.color='var(--grey)';
+  hint.textContent = days>0 ? `Plot(s) held for ${days}d ${hrs%24}h from now` : `Plot(s) held for ${hrs}h ${mins}m from now`;
 }
 
-// ── SUBMIT RESERVATION ────────────────────────────
+// ── SUBMIT ────────────────────────────────────────
 async function submitReservation() {
   const name    = document.getElementById('r-name').value.trim();
   const phone   = document.getElementById('r-phone').value.trim();
+  const address = document.getElementById('r-address').value.trim();
+  const notes   = document.getElementById('r-notes').value.trim();
   const expdate = document.getElementById('r-expdate').value;
   const exptime = document.getElementById('r-exptime').value || '18:00';
-  const notes   = document.getElementById('r-notes').value.trim();
 
-  if (!name)            { Utils.toast('Customer name required', 'err'); return; }
-  if (!/^[0-9]{10}$/.test(phone)) { Utils.toast('Phone must be 10 digits', 'err'); return; }
-  if (!selectedPlotNo)  { Utils.toast('Select a plot', 'err'); return; }
-  if (!expdate)         { Utils.toast('Expiry date required', 'err'); return; }
+  if (!name)                           { Utils.toast('Customer name required','err'); return; }
+  if (!/^[0-9]{10}$/.test(phone))      { Utils.toast('Phone must be 10 digits','err'); return; }
+  if (!selectedPlots.length)           { Utils.toast('Select at least one plot','err'); return; }
+  if (!expdate)                        { Utils.toast('Expiry date required','err'); return; }
 
-  // Validate expiry is in future
+  // Validate all plots have BR entered
+  for (const p of selectedPlots) {
+    if (!p.br) { Utils.toast(`Enter BR rate for Plot ${p.plotNo}`,'err'); return; }
+    if (p.rr > p.br) { Utils.toast(`RR cannot exceed BR for Plot ${p.plotNo}`,'err'); return; }
+  }
+
   const dp = expdate.split('-');
   const tp = exptime.split(':');
-  const expDt = new Date(parseInt(dp[0]), parseInt(dp[1])-1, parseInt(dp[2]), parseInt(tp[0]), parseInt(tp[1]));
-  if (expDt <= new Date()) { Utils.toast('Expiry must be in the future', 'err'); return; }
-
-  // Format date as dd/mm/yyyy for storage
+  const expDt = new Date(+dp[0], +dp[1]-1, +dp[2], +tp[0], +tp[1]);
+  if (expDt <= new Date()) { Utils.toast('Expiry must be in the future','err'); return; }
   const expiryDateFmt = dp[2]+'/'+dp[1]+'/'+dp[0];
 
   const btn = document.getElementById('reserveBtn');
@@ -128,35 +199,30 @@ async function submitReservation() {
   try {
     const res = await API.post({
       action: 'createReservation',
-      plotNo: selectedPlotNo,
-      customerName: name,
-      phone,
-      expiryDate: expiryDateFmt,
-      expiryTime: exptime,
-      notes
+      plots: selectedPlots.map(p => ({ plotNo:p.plotNo, area:p.area, br:p.br, rr:p.rr, cr:p.cr, brAmt:p.brAmt, rrAmt:p.rrAmt, crAmt:p.crAmt })),
+      customerName: name, phone, address, notes,
+      expiryDate: expiryDateFmt, expiryTime: exptime
     });
     if (res.error) throw new Error(res.error);
-
-    Utils.toast(`Plot ${res.plotNo} reserved for ${res.customerName}`, 'ok');
-
-    // Reset form
-    document.getElementById('r-name').value = '';
-    document.getElementById('r-phone').value = '';
-    document.getElementById('r-notes').value = '';
-    selectedPlotNo = null;
-    document.getElementById('resSelectedPlot').style.display = 'none';
-    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-    document.getElementById('r-expdate').value = tomorrow.toISOString().split('T')[0];
-    updateExpiryHint();
-
-    // Reload both grid and list
+    Utils.toast(`${res.count} plot(s) reserved for ${name}`, 'ok');
+    resetForm();
     await loadAvailablePlots();
     await loadReservations();
   } catch(e) {
     Utils.toast(e.message, 'err');
   } finally {
-    btn.disabled = false; btn.textContent = '📌 Reserve Plot';
+    btn.disabled=false; btn.textContent='📌 Reserve Plot(s)';
   }
+}
+
+function resetForm() {
+  ['r-name','r-phone','r-address','r-notes'].forEach(id => { document.getElementById(id).value=''; });
+  selectedPlots = [];
+  document.getElementById('resPlotRates').innerHTML = '';
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  document.getElementById('r-expdate').value = tomorrow.toISOString().split('T')[0];
+  document.getElementById('r-exptime').value = '18:00';
+  updateExpiryHint();
 }
 
 // ── RESERVATIONS LIST ─────────────────────────────
@@ -164,7 +230,7 @@ async function loadReservations() {
   const el = document.getElementById('reservationsList');
   el.innerHTML = '<div class="loading-block"><div class="spinner"></div>Loading…</div>';
   try {
-    const data = await API.get({ action: 'getReservations' });
+    const data = await API.get({ action:'getReservations' });
     if (data.error) throw new Error(data.error);
     renderReservations(data.rows);
   } catch(e) {
@@ -174,67 +240,76 @@ async function loadReservations() {
 
 function renderReservations(rows) {
   const el = document.getElementById('reservationsList');
-  if (!rows.length) {
+  if (!rows || !rows.length) {
     el.innerHTML = '<div class="empty-state" style="padding:30px 0;"><div class="empty-icon">📌</div><p>No reservations yet</p></div>';
     return;
   }
 
-  // Sort: Active first, then Expired, then Cancelled/Converted
   const order = { Active:0, Expired:1, Cancelled:2, Converted:3 };
-  rows.sort((a,b) => (order[a['Status']]||9) - (order[b['Status']]||9));
+  rows.sort((a,b) => (order[a['Status']]||9)-(order[b['Status']]||9));
 
+  // Group by Reservation ID (multi-plot reservations share same ID prefix)
+  // Each row IS one reservation (one plot per row from the sheet)
   el.innerHTML = rows.map(r => {
-    const status   = r['Status'] || 'Active';
-    const isActive = status === 'Active';
-    const expStr   = r['Expiry Date'] + ' ' + (r['Expiry Time'] || '');
+    const status   = r['Status']||'Active';
+    const isActive = status==='Active';
+    const expStr   = String(r['Expiry Date']||'') + ' ' + String(r['Expiry Time']||'');
     const expiry   = parseResDate(expStr);
     const timeLeft = expiry ? getTimeLeft(expiry) : '—';
-    const urgent   = isActive && expiry && (expiry - new Date()) < 3600000; // < 1 hour
+    const urgent   = isActive && expiry && (expiry - new Date()) < 3600000;
 
-    const statusCls = {
-      Active: 'res-status-active', Expired: 'res-status-expired',
-      Cancelled: 'res-status-cancelled', Converted: 'res-status-converted'
-    }[status] || '';
+    const stCls = { Active:'res-status-active', Expired:'res-status-expired',
+                    Cancelled:'res-status-cancelled', Converted:'res-status-converted' }[status]||'';
+
+    // Rate summary if present
+    const brAmt = Number(r['BR Amount'])||0, rrAmt = Number(r['RR Amount'])||0, crAmt = Number(r['CR Amount'])||0;
+    const rateRow = brAmt>0 ? `<div class="res-card-rates">
+      <span class="pec-amt-chip br-chip" style="font-size:.65rem;">BR ₹${Utils.fmtNum(brAmt)}</span>
+      <span class="pec-amt-chip rr-chip2" style="font-size:.65rem;">RR ₹${Utils.fmtNum(rrAmt)}</span>
+      <span class="pec-amt-chip cr-chip2" style="font-size:.65rem;">CR ₹${Utils.fmtNum(crAmt)}</span>
+    </div>` : '';
 
     return `<div class="res-card ${isActive?'res-card-active':''} ${urgent?'res-card-urgent':''}">
       <div class="res-card-head">
         <div class="res-card-plot">Plot ${r['Plot No']}</div>
-        <span class="res-status-badge ${statusCls}">${status}</span>
+        <span class="res-status-badge ${stCls}">${status}</span>
       </div>
-      <div class="res-card-customer">${r['Customer Name']} &nbsp;·&nbsp; ${r['Phone']||''}</div>
-      <div class="res-card-meta">
-        Reserved by ${r['Reserved By']||'—'} &nbsp;·&nbsp; ${r['Reserved At']||''}
-      </div>
+      <div class="res-card-customer">${r['Customer Name']||'—'} &nbsp;·&nbsp; ${r['Phone']||''}</div>
+      ${rateRow}
+      <div class="res-card-meta">Reserved by ${r['Reserved By']||'—'} &nbsp;·&nbsp; ${r['Reserved At']||''}</div>
       <div class="res-card-expiry ${urgent?'res-expiry-urgent':''}">
-        ⏱ Expires: ${r['Expiry Date']} ${r['Expiry Time']||''}
-        ${isActive ? `<span class="res-timeleft">${timeLeft}</span>` : ''}
+        ⏱ Expires: ${r['Expiry Date']||''} ${r['Expiry Time']||''}
+        ${isActive?`<span class="res-timeleft">${timeLeft}</span>`:''}
       </div>
-      ${r['Notes'] ? `<div class="res-card-notes">${r['Notes']}</div>` : ''}
-      ${!isActive && r['Released At'] ? `<div class="res-card-meta" style="margin-top:4px;">${status} · ${r['Released At']} by ${r['Released By']||'—'}</div>` : ''}
-      ${isActive ? `
-        <div class="res-card-actions">
-          <button class="btn-convert" data-id="${r['Reservation ID']}" data-plot="${r['Plot No']}"
-            data-name="${r['Customer Name']}" data-phone="${r['Phone']||''}">
-            📋 Convert to Booking
-          </button>
-          <button class="btn-cancel-res" data-id="${r['Reservation ID']}" data-plot="${r['Plot No']}"
-            data-name="${r['Customer Name']}">
-            ✕ Cancel
-          </button>
-        </div>` : ''}
+      ${r['Notes']?`<div class="res-card-notes">${r['Notes']}</div>`:''}
+      ${!isActive&&r['Released At']?`<div class="res-card-meta" style="margin-top:4px;">${status} · ${r['Released At']} by ${r['Released By']||'—'}</div>`:''}
+      ${isActive?`<div class="res-card-actions">
+        <button class="btn-convert"
+          data-id="${r['Reservation ID']}" data-plot="${r['Plot No']}"
+          data-name="${(r['Customer Name']||'').replace(/"/g,'&quot;')}"
+          data-phone="${r['Phone']||''}"
+          data-address="${(r['Address']||'').replace(/"/g,'&quot;')}">
+          📋 Convert to Booking
+        </button>
+        <button class="btn-cancel-res"
+          data-id="${r['Reservation ID']}" data-plot="${r['Plot No']}"
+          data-name="${(r['Customer Name']||'').replace(/"/g,'&quot;')}">
+          ✕ Cancel
+        </button>
+      </div>`:''}
     </div>`;
   }).join('');
 
-  // Wire buttons
+  // Wire buttons AFTER innerHTML is set
   el.querySelectorAll('.btn-convert').forEach(btn => {
     btn.addEventListener('click', () => openConvertModal({
-      resID: btn.dataset.id, plotNo: btn.dataset.plot,
-      customerName: btn.dataset.name, phone: btn.dataset.phone
+      resID:btn.dataset.id, plotNo:btn.dataset.plot,
+      customerName:btn.dataset.name, phone:btn.dataset.phone, address:btn.dataset.address
     }));
   });
   el.querySelectorAll('.btn-cancel-res').forEach(btn => {
     btn.addEventListener('click', () => openCancelModal({
-      resID: btn.dataset.id, plotNo: btn.dataset.plot, customerName: btn.dataset.name
+      resID:btn.dataset.id, plotNo:btn.dataset.plot, customerName:btn.dataset.name
     }));
   });
 }
@@ -254,24 +329,21 @@ function openConvertModal(info) {
 async function doConvert() {
   if (!pendingConvert) return;
   const btn = document.getElementById('confirmConvertBtn');
-  btn.disabled = true; btn.textContent = 'Processing…';
-
+  btn.disabled=true; btn.textContent='Processing…';
   try {
-    const res = await API.post({ action: 'convertReservation', resID: pendingConvert.resID });
+    const res = await API.post({ action:'convertReservation', resID:pendingConvert.resID });
     if (res.error) throw new Error(res.error);
-
     Utils.closeOverlay('convertOverlay');
-
-    // Redirect to booking page with pre-filled params
     const params = new URLSearchParams({
-      plotNo:       res.plotNo,
-      customerName: res.customerName,
-      phone:        res.phone
+      plotNo:       pendingConvert.plotNo,
+      customerName: pendingConvert.customerName,
+      phone:        pendingConvert.phone,
+      address:      pendingConvert.address||''
     });
     window.location.href = 'booking.html?' + params.toString();
   } catch(e) {
-    Utils.toast(e.message, 'err');
-    btn.disabled = false; btn.textContent = '✅ Continue to Booking';
+    Utils.toast(e.message,'err');
+    btn.disabled=false; btn.textContent='✅ Continue to Booking';
   }
 }
 
@@ -289,43 +361,36 @@ function openCancelModal(info) {
 async function doCancel() {
   if (!pendingCancel) return;
   const btn = document.getElementById('confirmCancelResBtn');
-  btn.disabled = true; btn.textContent = 'Cancelling…';
-
+  btn.disabled=true; btn.textContent='Cancelling…';
   try {
-    const res = await API.post({ action: 'cancelReservation', resID: pendingCancel.resID });
+    const res = await API.post({ action:'cancelReservation', resID:pendingCancel.resID });
     if (res.error) throw new Error(res.error);
-    Utils.toast('Reservation cancelled — plot released', 'ok');
+    Utils.toast('Reservation cancelled — plot released','ok');
     Utils.closeOverlay('cancelResOverlay');
+    pendingCancel = null;
     await loadAvailablePlots();
     await loadReservations();
   } catch(e) {
-    Utils.toast(e.message, 'err');
-  } finally {
-    btn.disabled = false; btn.textContent = '✕ Cancel Reservation';
-    pendingCancel = null;
+    Utils.toast(e.message,'err');
+    btn.disabled=false; btn.textContent='✕ Cancel Reservation';
   }
 }
 
 // ── Helpers ───────────────────────────────────────
 function parseResDate(str) {
-  if (!str || str.trim() === '') return null;
-  const parts = str.trim().split(' ');
-  const dp    = parts[0].split('/');
-  if (dp.length === 3) {
-    const tp = (parts[1] || '23:59').split(':');
-    return new Date(parseInt(dp[2]), parseInt(dp[1])-1, parseInt(dp[0]),
-                    parseInt(tp[0]||23), parseInt(tp[1]||59));
+  if (!str||str.trim()==='') return null;
+  const parts=str.trim().split(' ');
+  const dp=parts[0].split('/');
+  if (dp.length===3) {
+    const tp=(parts[1]||'23:59').split(':');
+    return new Date(+dp[2],+dp[1]-1,+dp[0],+tp[0]||23,+tp[1]||59);
   }
-  const d = new Date(str); return isNaN(d) ? null : d;
+  const d=new Date(str); return isNaN(d)?null:d;
 }
-
 function getTimeLeft(expiry) {
-  const diff = expiry - new Date();
-  if (diff <= 0) return 'Expired';
-  const hrs  = Math.floor(diff / 3600000);
-  const mins = Math.floor((diff % 3600000) / 60000);
-  const days = Math.floor(hrs / 24);
-  if (days > 0) return `${days}d ${hrs%24}h left`;
-  if (hrs > 0)  return `${hrs}h ${mins}m left`;
+  const diff=expiry-new Date(); if (diff<=0) return 'Expired';
+  const hrs=Math.floor(diff/3600000),days=Math.floor(hrs/24),mins=Math.floor((diff%3600000)/60000);
+  if (days>0) return `${days}d ${hrs%24}h left`;
+  if (hrs>0)  return `${hrs}h ${mins}m left`;
   return `${mins}m left`;
 }

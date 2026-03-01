@@ -1715,3 +1715,21 @@ header {
   .res-layout { grid-template-columns: 1fr; }
   .res-list-col { position: static; }
 }
+
+/* Reserve — rate card + extras */
+.res-grid-hint   { font-size:.75rem;color:var(--grey);margin-bottom:8px;font-style:italic; }
+.res-rate-card   { }
+.res-cr-display  {
+  padding: 10px 12px;
+  background: var(--mist);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--forest);
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+.res-amounts     { display:flex;gap:8px;flex-wrap:wrap;margin-top:10px; }
+.res-card-rates  { display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px; }

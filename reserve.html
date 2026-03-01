@@ -10,13 +10,14 @@
 </head>
 <body>
 <div class="page-wrap">
-
-  <!-- New Reservation Form -->
   <div class="res-layout">
+
+    <!-- LEFT: Form -->
     <div class="res-form-col">
       <div class="page-title">Reserve Plot</div>
-      <div class="page-sub">Hold a plot for a customer for a specific time window</div>
+      <div class="page-sub">Hold one or more plots for a customer for a specific time window</div>
 
+      <!-- Customer -->
       <div class="card" style="margin-top:20px;">
         <div class="card-title">Customer Details</div>
         <div class="form-row">
@@ -29,77 +30,87 @@
             <input type="tel" id="r-phone" placeholder="10-digit mobile" maxlength="10" inputmode="numeric">
           </div>
         </div>
-        <div class="fg">
+        <div class="fg" style="margin-top:10px;">
+          <label>Address</label>
+          <input type="text" id="r-address" placeholder="Full address">
+        </div>
+        <div class="fg" style="margin-top:10px;">
           <label>Notes</label>
-          <input type="text" id="r-notes" placeholder="Optional — reason for reservation, discussion points, etc.">
+          <input type="text" id="r-notes" placeholder="Optional — reason, discussion points…">
         </div>
       </div>
 
+      <!-- Plot grid -->
       <div class="card" style="margin-top:14px;">
         <div class="card-title-row">
-          <div class="card-title" style="margin:0;">Select Plot <span class="req">*</span></div>
+          <div class="card-title" style="margin:0;">Select Plots <span class="req">*</span></div>
           <div id="resPickerStatus" class="plot-picker-status">Loading…</div>
         </div>
+        <div class="res-grid-hint">Click to select, click again to deselect. Multiple plots allowed.</div>
         <div id="resPlotGrid" class="plot-picker-grid"></div>
-        <div id="resSelectedPlot" class="res-selected-plot" style="display:none;"></div>
       </div>
 
+      <!-- Per-plot rate cards -->
+      <div id="resPlotRates"></div>
+
+      <!-- Expiry -->
       <div class="card" style="margin-top:14px;">
-        <div class="card-title">Reservation Window <span class="req">*</span></div>
+        <div class="card-title">Reservation Expiry <span class="req">*</span></div>
         <div class="form-row">
           <div class="fg">
             <label>Expiry Date <span class="req">*</span></label>
             <input type="date" id="r-expdate">
           </div>
           <div class="fg">
-            <label>Expiry Time <span class="req">*</span></label>
+            <label>Expiry Time</label>
             <input type="time" id="r-exptime" value="18:00">
           </div>
         </div>
         <div class="res-expiry-hint" id="resExpiryHint"></div>
       </div>
 
-      <button class="btn-submit" id="reserveBtn" style="margin-top:8px;">📌 Reserve Plot</button>
+      <button class="btn-submit" id="reserveBtn" style="margin-top:8px;">📌 Reserve Plot(s)</button>
     </div>
 
-    <!-- Active Reservations panel -->
+    <!-- RIGHT: Active reservations -->
     <div class="res-list-col">
       <div class="res-list-header">
-        <div class="res-list-title">Active Reservations</div>
+        <div class="res-list-title">Reservations</div>
         <button class="btn-refresh" id="refreshBtn">↻ Refresh</button>
       </div>
       <div id="reservationsList"><div class="loading-block"><div class="spinner"></div>Loading…</div></div>
     </div>
+
   </div>
 </div>
 
-<!-- Convert to Booking Modal -->
-<div class="overlay" id="convertOverlay" style="display:none;">
+<!-- Convert Modal -->
+<div class="overlay" id="convertOverlay">
   <div class="modal" style="max-width:520px;">
     <div class="modal-title">📋 Convert to Booking</div>
     <div class="res-convert-info" id="convertInfo"></div>
     <p style="font-size:.85rem;color:var(--grey);margin:12px 0;">
-      This will release the reservation and open the booking form pre-filled with customer details. 
-      You'll enter BR/RR rates and token amount on the next screen.
+      This will release the reservation and open the booking form pre-filled with customer details.
+      You will enter BR/RR rates and token on the next screen.
     </p>
     <div style="display:flex;gap:10px;margin-top:20px;">
       <button class="btn-submit" id="confirmConvertBtn">✅ Continue to Booking</button>
-      <button class="btn-submit" style="background:var(--grey);" onclick="Utils.closeOverlay('convertOverlay')">Cancel</button>
+      <button class="btn-submit" style="background:var(--grey);" data-close="convertOverlay">Cancel</button>
     </div>
   </div>
 </div>
 
-<!-- Cancel Reservation Modal -->
-<div class="overlay" id="cancelResOverlay" style="display:none;">
+<!-- Cancel Modal -->
+<div class="overlay" id="cancelResOverlay">
   <div class="modal" style="max-width:460px;">
     <div class="modal-title">Cancel Reservation</div>
     <div class="res-convert-info" id="cancelResInfo"></div>
     <p style="font-size:.85rem;color:var(--grey);margin:12px 0;">
-      This will release the plot back to Available. The reservation record will be kept as Cancelled.
+      This will release the plot(s) back to Available. The record will be kept as Cancelled.
     </p>
     <div style="display:flex;gap:10px;margin-top:20px;">
       <button class="btn-submit" id="confirmCancelResBtn" style="background:var(--red);">✕ Cancel Reservation</button>
-      <button class="btn-submit" style="background:var(--grey);" onclick="Utils.closeOverlay('cancelResOverlay')">Back</button>
+      <button class="btn-submit" style="background:var(--grey);" data-close="cancelResOverlay">Back</button>
     </div>
   </div>
 </div>
