@@ -321,11 +321,11 @@ function renderReservations(rows) {
       <div class="res-card-customer">${r['Customer Name']||'—'} &nbsp;·&nbsp; ${r['Phone']||''}</div>
       ${rateRow}
       <div class="res-card-meta">Reserved by ${r['Reserved By']||'—'} &nbsp;·&nbsp; ${fmtResDate(r['Reserved At'])}</div>
+      ${isActive ? scheduleRow : ''}
       <div class="res-card-expiry ${urgent?'res-expiry-urgent':''}">
         ⏱ Expires: ${fmtResDate(String(r['Expiry Date']||'').trim() + ' ' + String(r['Expiry Time']||'').trim())}
         ${isActive?`<span class="res-timeleft">${timeLeft}</span>`:''}
       </div>
-      ${scheduleRow}
       ${r['Notes']?`<div class="res-card-notes">${r['Notes']}</div>`:''}
       ${!isActive&&r['Released At']?`<div class="res-card-meta" style="margin-top:4px;">${status} · ${fmtResDate(r['Released At'])} by ${r['Released By']||'—'}</div>`:''}
       ${isActive?`<div class="res-card-actions">
@@ -355,9 +355,14 @@ function openConvertModal(info) {
   pendingConvert = info;
   document.getElementById('convertInfo').innerHTML = `
     <div class="res-modal-info">
-      <span class="res-modal-plot">Plot ${info.plotNo}</span>
-      <span class="res-modal-customer">${info.customerName}</span>
-      <span class="res-modal-phone">${info.phone}</span>
+      <div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;">
+        <span class="res-modal-plot">Plot ${info.plotNo}</span>
+        <span style="color:var(--grey);font-size:.8rem;">→ converting to booking</span>
+      </div>
+      <div style="margin-top:6px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <span class="res-modal-customer">${info.customerName}</span>
+        <span class="res-modal-phone">${info.phone}</span>
+      </div>
     </div>`;
   Utils.openOverlay('convertOverlay');
 }
