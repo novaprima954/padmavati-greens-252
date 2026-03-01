@@ -76,11 +76,12 @@ const Utils = (() => {
   }
 
   // ── Receipt → mode detection ──────────────────
-  // 1-2000 = Cash, else non-cash
+  // 1-2000 = non-cash (NEFT/UPI etc), 2001+ = Cash
   function receiptToMode(receiptVal) {
     const n = parseInt(String(receiptVal).trim());
-    if (!isNaN(n) && n >= 1 && n <= 2000) return 'Cash';
-    return null; // non-cash but don't assume specific mode
+    if (!isNaN(n) && n >= 2001) return 'Cash';
+    if (!isNaN(n) && n >= 1 && n <= 2000) return null; // non-cash, don't assume mode
+    return null;
   }
 
   return { toast, fmtNum, fmtCurrency, openOverlay, closeOverlay, setupOverlays, setLoading, statusBadge, calcNetDue, receiptToMode };
