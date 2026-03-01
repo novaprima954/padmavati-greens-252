@@ -208,8 +208,13 @@ function renderPanelBody(booking, payments, receiptNo) {
       </table>`;
   }
 
-  // Add payment form
-  renderAddPaymentForm('addPaymentForm', receiptNo);
+  // Add payment form — admin only
+  const _sess = JSON.parse(localStorage.getItem('pg_session')||'{}');
+  if (_sess.role === 'admin') {
+    renderAddPaymentForm('addPaymentForm', receiptNo);
+  } else {
+    document.getElementById('addPaymentForm').innerHTML = '';
+  }
 }
 
 function renderAddPaymentForm(containerId, receiptNo) {

@@ -1,5 +1,12 @@
 // js/app/booking.js — Multi-plot booking
 Auth.requireAuth();
+// Block sales role from booking page
+(function(){
+  try {
+    const s = JSON.parse(localStorage.getItem('pg_session'));
+    if (s && s.role !== 'admin') window.location.replace('index.html');
+  } catch(e) {}
+})();
 
 let availablePlots = [];
 let plotEntries    = [];  // [{id, plotNo, br, rr, area, brAmt, rrAmt, crAmt}]
