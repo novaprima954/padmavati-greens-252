@@ -11,8 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   Utils.setupOverlays();
 
   // Default expiry: tomorrow 18:00
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  document.getElementById('r-expdate').value = tomorrow.toISOString().split('T')[0];
+  const defExp = new Date(); defExp.setDate(defExp.getDate() + 2);
+  document.getElementById('r-expdate').value = defExp.toISOString().split('T')[0];
   updateExpiryHint();
 
   document.getElementById('r-expdate').addEventListener('change', updateExpiryHint);
@@ -219,8 +219,8 @@ function resetForm() {
   ['r-name','r-phone','r-address','r-notes'].forEach(id => { document.getElementById(id).value=''; });
   selectedPlots = [];
   document.getElementById('resPlotRates').innerHTML = '';
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-  document.getElementById('r-expdate').value = tomorrow.toISOString().split('T')[0];
+  const defExp2 = new Date(); defExp2.setDate(defExp2.getDate() + 2);
+  document.getElementById('r-expdate').value = defExp2.toISOString().split('T')[0];
   document.getElementById('r-exptime').value = '18:00';
   updateExpiryHint();
 }
@@ -271,10 +271,10 @@ function renderReservations(rows) {
   // Group by Reservation ID (multi-plot reservations share same ID prefix)
   // Each row IS one reservation (one plot per row from the sheet)
   el.innerHTML = rows.map(r => {
-    const status   = r['Status']||'Active';
+    const status   = String(r['Status']||'').trim() || 'Active';
     const isActive = status==='Active';
-    const expStr   = String(r['Expiry Date']||'') + ' ' + String(r['Expiry Time']||'');
-    const expiry   = parseResDate(expStr);
+    const expStr   = String(r['Expiry Date']||'').trim() + ' ' + String(r['Expiry Time']||'').trim();
+    const expiry   = parseResDate(expStr.trim());
     const timeLeft = expiry ? getTimeLeft(expiry) : '—';
     const urgent   = isActive && expiry && (expiry - new Date()) < 3600000;
 
@@ -293,9 +293,7 @@ function renderReservations(rows) {
     // Installment schedule — only if we have amounts
     let scheduleRow = '';
     if (brAmt > 0) {
-      const resDateStr = String(r['Reserved At']||'').split(' ')[0]; // dd/mm/yyyy
-      const dp = resDateStr.split('/');
-      const bd = dp.length===3 ? new Date(+dp[2],+dp[1]-1,+dp[0]) : new Date();
+      const bd = resFieldToDate(r['Reserved At']) || new Date();
       function addD(d,n){ const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
       function fmtD(d){ return d.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'}); }
       const d10=fmtD(addD(bd,10)), d75=fmtD(addD(bd,75)), d165=fmtD(addD(bd,165));
@@ -322,14 +320,14 @@ function renderReservations(rows) {
       </div>
       <div class="res-card-customer">${r['Customer Name']||'—'} &nbsp;·&nbsp; ${r['Phone']||''}</div>
       ${rateRow}
-      <div class="res-card-meta">Reserved by ${r['Reserved By']||'—'} &nbsp;·&nbsp; ${r['Reserved At']||''}</div>
+      <div class="res-card-meta">Reserved by ${r['Reserved By']||'—'} &nbsp;·&nbsp; ${fmtResDate(r['Reserved At'])}</div>
       <div class="res-card-expiry ${urgent?'res-expiry-urgent':''}">
-        ⏱ Expires: ${r['Expiry Date']||''} ${r['Expiry Time']||''}
+        ⏱ Expires: ${fmtResDate(String(r['Expiry Date']||'').trim() + ' ' + String(r['Expiry Time']||'').trim())}
         ${isActive?`<span class="res-timeleft">${timeLeft}</span>`:''}
       </div>
       ${scheduleRow}
       ${r['Notes']?`<div class="res-card-notes">${r['Notes']}</div>`:''}
-      ${!isActive&&r['Released At']?`<div class="res-card-meta" style="margin-top:4px;">${status} · ${r['Released At']} by ${r['Released By']||'—'}</div>`:''}
+      ${!isActive&&r['Released At']?`<div class="res-card-meta" style="margin-top:4px;">${status} · ${fmtResDate(r['Released At'])} by ${r['Released By']||'—'}</div>`:''}
       ${isActive?`<div class="res-card-actions">
         <button class="btn-convert"
           data-id="${r['Reservation ID']}" data-plot="${r['Plot No']}"
@@ -416,14 +414,39 @@ async function doCancel() {
 
 // ── Helpers ───────────────────────────────────────
 function parseResDate(str) {
-  if (!str||str.trim()==='') return null;
-  const parts=str.trim().split(' ');
-  const dp=parts[0].split('/');
-  if (dp.length===3) {
-    const tp=(parts[1]||'23:59').split(':');
-    return new Date(+dp[2],+dp[1]-1,+dp[0],+tp[0]||23,+tp[1]||59);
+  if (!str) return null;
+  const s = String(str).trim();
+  if (!s || s==='') return null;
+  // dd/mm/yyyy HH:MM
+  const parts = s.split(' ');
+  const dp = parts[0].split('/');
+  if (dp.length===3 && dp[2].length===4) {
+    const tp = (parts[1]||'23:59').split(':');
+    return new Date(+dp[2], +dp[1]-1, +dp[0], +(tp[0]||23), +(tp[1]||59));
   }
-  const d=new Date(str); return isNaN(d)?null:d;
+  // ISO string or any other format — let Date parse it
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Format any date value (ISO string, Date object, dd/mm/yyyy) → dd/mm/yyyy HH:MM
+function fmtResDate(val) {
+  if (!val) return '—';
+  const d = parseResDate(String(val));
+  if (!d) return String(val);
+  return d.toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'})
+       + ' ' + d.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+// Extract just a Date object from any reservation date field
+function resFieldToDate(val) {
+  if (!val) return null;
+  const s = String(val).trim();
+  if (!s) return null;
+  // dd/mm/yyyy ...
+  const dp = s.split(' ')[0].split('/');
+  if (dp.length===3 && dp[2].length===4) return new Date(+dp[2],+dp[1]-1,+dp[0]);
+  return new Date(s);
 }
 function getTimeLeft(expiry) {
   const diff=expiry-new Date(); if (diff<=0) return 'Expired';
