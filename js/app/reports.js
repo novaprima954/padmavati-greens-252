@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     currentReport = null;
   });
 
-  document.getElementById('ledgerSearchBtn').addEventListener('click', loadLedger);
+  document.getElementById('ledgerSearchBtn').addEventListener('click', () => loadLedger());
   document.getElementById('ledgerName').addEventListener('keydown', e => { if(e.key==='Enter') loadLedger(); });
 
   document.getElementById('duesLoadBtn').addEventListener('click', () => loadDues());
