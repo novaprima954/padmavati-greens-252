@@ -152,7 +152,7 @@ function renderLedger(data) {
       <thead><tr><th>Date</th><th>Manual Rcpt</th><th>Amount</th><th>Mode</th><th>Against</th><th>Ref</th><th>Notes</th><th>By</th></tr></thead>
       <tbody>
         ${payments.map(p=>`<tr>
-          <td>${p.date}</td>
+          <td>${fmtDate(parseDateIN(String(p.date||'')))}</td>
           <td>${p.receipt||'—'}</td>
           <td><strong>₹${Utils.fmtNum(p.amount)}</strong></td>
           <td>${p.mode}</td>
@@ -491,7 +491,7 @@ function renderPayments(data) {
 
   rows.forEach(r => {
     html += `<tr>
-      <td>${r.paymentDate}</td>
+      <td>${fmtDate(parseDateIN(String(r.paymentDate||'')))}</td>
       <td>${r.manualReceipt||'—'}</td>
       <td><strong>₹${Utils.fmtNum(r.amount)}</strong></td>
       <td>${r.mode}</td>
