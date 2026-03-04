@@ -24,6 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('duesLoadBtn').addEventListener('click', () => loadDues());
   document.getElementById('excessLoadBtn').addEventListener('click', () => loadExcess());
   document.getElementById('paymentsLoadBtn').addEventListener('click', () => loadPayments());
+  document.getElementById('referredLoadBtn').addEventListener('click', () => loadReferred());
+
+  // Close referred dropdown when clicking outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#refMultiselect')) closeRefDropdown();
+  });
 
   // Show/hide upcoming days when type changes
   document.getElementById('duesType').addEventListener('change', () => {
@@ -47,15 +53,17 @@ function openReport(report) {
   document.getElementById('reportView').style.display  = 'block';
   document.getElementById('reportOutput').innerHTML    = '';
 
-  document.getElementById('ledgerControls').style.display  = 'none';
-  document.getElementById('duesControls').style.display    = 'none';
-  document.getElementById('excessControls').style.display  = 'none';
+  document.getElementById('ledgerControls').style.display    = 'none';
+  document.getElementById('duesControls').style.display      = 'none';
+  document.getElementById('excessControls').style.display    = 'none';
+  document.getElementById('referredControls').style.display  = 'none';
 
   const titles = {
     ledger:   ['Customer Ledger', 'Search by customer name to see all plots and balances'],
     dues:     ['Installment Due Report', 'All customers with outstanding installments'],
     excess:   ['Excess Payment Report', 'Customers where paid amount exceeds category total'],
     payments: ['Payment Receipt Report', 'All payment receipts filtered by date range'],
+    referred: ['Referred By Report', 'All bookings grouped by referral source'],
   };
   document.getElementById('reportViewTitle').textContent = titles[report][0];
   document.getElementById('reportViewSub').textContent   = titles[report][1];
@@ -71,6 +79,9 @@ function openReport(report) {
     loadExcess();
   } else if (report==='payments') {
     document.getElementById('paymentsControls').style.display = 'block';
+  } else if (report==='referred') {
+    document.getElementById('referredControls').style.display = 'block';
+    initReferredDropdown();
   }
 }
 
@@ -524,3 +535,161 @@ function parseDateIN(str) {
 }
 function addDays(d,n)  { if(!d) return null; const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
 function fmtDate(d)    { if(!d) return '—'; return d.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+
+
+// ── REFERRED BY REPORT ────────────────────────────
+let _referredAll = [];
+let _referredSelected = new Set();
+
+async function initReferredDropdown() {
+  const res = await API.get({ action:'getReportReferred' });
+  if (res.error) { Utils.toast(res.error, 'err'); return; }
+  _referredAll = res.referrers || [];
+  _referredSelected = new Set(_referredAll); // select all by default
+  renderRefOptions();
+  updateRefTrigger();
+}
+
+function renderRefOptions() {
+  const container = document.getElementById('refOptions');
+  container.innerHTML = _referredAll.map(r => `
+    <label class="ref-option">
+      <input type="checkbox" value="${r}" ${_referredSelected.has(r)?'checked':''}
+             onchange="onRefCheckChange(this)">
+      <span>${r}</span>
+    </label>`).join('');
+  // Sync select-all state
+  document.getElementById('refSelectAll').checked =
+    _referredSelected.size === _referredAll.length;
+}
+
+function onRefCheckChange(cb) {
+  if (cb.checked) _referredSelected.add(cb.value);
+  else            _referredSelected.delete(cb.value);
+  document.getElementById('refSelectAll').checked =
+    _referredSelected.size === _referredAll.length;
+  updateRefTrigger();
+}
+
+function toggleAllReferrers(cb) {
+  if (cb.checked) _referredAll.forEach(r => _referredSelected.add(r));
+  else            _referredSelected.clear();
+  renderRefOptions();
+  updateRefTrigger();
+}
+
+function updateRefTrigger() {
+  const label = document.getElementById('refTriggerLabel');
+  const n = _referredSelected.size, total = _referredAll.length;
+  if (n === 0) {
+    label.innerHTML = '<span style="color:var(--grey)">Select referrers…</span>';
+  } else if (n === total) {
+    label.innerHTML = '<span class="ref-tag">All (' + total + ')</span>';
+  } else {
+    const tags = [..._referredSelected].slice(0,3).map(r =>
+      `<span class="ref-tag">${r}</span>`).join('');
+    const more = n > 3 ? `<span class="ref-tag" style="background:var(--grey)">+${n-3}</span>` : '';
+    label.innerHTML = '<div class="ref-tag-wrap">' + tags + more + '</div>';
+  }
+}
+
+function toggleRefDropdown() {
+  const list = document.getElementById('refList');
+  list.style.display = list.style.display === 'none' ? 'block' : 'none';
+}
+
+function closeRefDropdown() {
+  document.getElementById('refList').style.display = 'none';
+}
+
+async function loadReferred() {
+  if (_referredSelected.size === 0) {
+    Utils.toast('Select at least one referrer', 'err'); return;
+  }
+  const out = document.getElementById('reportOutput');
+  out.innerHTML = '<div class="loading-state">Loading…</div>';
+  closeRefDropdown();
+
+  const referrers = [..._referredSelected].join('||');
+  const res = await API.get({ action:'getReportReferred', referrers });
+  if (res.error) { out.innerHTML = `<div class="empty-state"><p>${res.error}</p></div>`; return; }
+
+  const grouped = res.grouped || {};
+  const keys = Object.keys(grouped);
+  if (!keys.length) { out.innerHTML = '<div class="empty-state"><p>No bookings found for selected referrers.</p></div>'; return; }
+
+  // Summary totals
+  let grandTotal = 0, grandPaid = 0, grandBal = 0, grandCount = 0;
+  keys.forEach(rf => {
+    grouped[rf].forEach(r => {
+      grandTotal += r.brAmt; grandPaid += r.brPaid; grandBal += r.brBal; grandCount++;
+    });
+  });
+
+  let html = `
+    <div class="report-summary-bar" style="margin-bottom:20px;">
+      <div class="rsb-item"><span>Referrers</span><strong>${keys.length}</strong></div>
+      <div class="rsb-item"><span>Bookings</span><strong>${grandCount}</strong></div>
+      <div class="rsb-item"><span>Total BR</span><strong>₹${Utils.fmtNum(grandTotal)}</strong></div>
+      <div class="rsb-item"><span>Total Paid</span><strong>₹${Utils.fmtNum(grandPaid)}</strong></div>
+      <div class="rsb-item"><span>Total Balance</span><strong style="color:var(--red)">₹${Utils.fmtNum(grandBal)}</strong></div>
+    </div>`;
+
+  keys.forEach(rf => {
+    const rows = grouped[rf];
+    const secTotal = rows.reduce((s,r) => s + r.brAmt, 0);
+    const secPaid  = rows.reduce((s,r) => s + r.brPaid, 0);
+    const secBal   = rows.reduce((s,r) => s + r.brBal, 0);
+
+    html += `<div class="referred-section">
+      <div class="referred-section-header">
+        <span>🤝 ${rf}</span>
+        <span class="ref-count">${rows.length} booking${rows.length>1?'s':''} &nbsp;·&nbsp; BR ₹${Utils.fmtNum(secTotal)} &nbsp;·&nbsp; Paid ₹${Utils.fmtNum(secPaid)} &nbsp;·&nbsp; Bal ₹${Utils.fmtNum(secBal)}</span>
+      </div>
+      <table class="data-table" style="border-radius:0 0 var(--r) var(--r);overflow:hidden;">
+        <thead><tr>
+          <th>Customer</th><th>Phone</th><th>Plot</th>
+          <th>Booking Date</th><th>BR Amt</th><th>Paid</th><th>Balance</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr class="referred-customer-row"
+                data-name="${encodeURIComponent(r.customerName)}"
+                data-phone="${encodeURIComponent(r.phone)}"
+                onclick="goToLedger(this)">
+              <td><strong>${r.customerName}</strong></td>
+              <td>${r.phone||'—'}</td>
+              <td>Plot ${r.plotNo}</td>
+              <td>${r.bookingDate||'—'}</td>
+              <td>₹${Utils.fmtNum(r.brAmt)}</td>
+              <td>₹${Utils.fmtNum(r.brPaid)}</td>
+              <td style="color:${r.brBal>0?'var(--red)':'var(--forest)'}">
+                ${r.brBal>0?'₹'+Utils.fmtNum(r.brBal):'✓ Paid'}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td colspan="4" style="font-weight:700;text-align:right;padding:8px 12px;">Subtotal</td>
+          <td style="font-weight:700;padding:8px 12px;">₹${Utils.fmtNum(secTotal)}</td>
+          <td style="font-weight:700;padding:8px 12px;">₹${Utils.fmtNum(secPaid)}</td>
+          <td style="font-weight:700;padding:8px 12px;color:${secBal>0?'var(--red)':'var(--forest)'}">₹${Utils.fmtNum(secBal)}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  });
+
+  out.innerHTML = html;
+}
+
+function goToLedger(row) {
+  const name  = decodeURIComponent(row.dataset.name);
+  const phone = decodeURIComponent(row.dataset.phone);
+  // Navigate to reports page with ledger pre-loaded
+  sessionStorage.setItem('pg_ledger_jump', JSON.stringify({ name, phone }));
+  openReport('ledger');
+  // Trigger auto-load after UI settles
+  setTimeout(() => {
+    document.getElementById('ledgerName').value = name;
+    loadLedger(phone);
+  }, 50);
+}

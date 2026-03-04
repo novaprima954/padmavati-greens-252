@@ -41,6 +41,11 @@
       <div class="rc-name">Payment Receipt Report</div>
       <div class="rc-desc">All payment receipts for a date range — amount, mode, against, customer, plot and inputter</div>
     </div>
+    <div class="report-card" data-report="referred">
+      <div class="rc-icon">🤝</div>
+      <div class="rc-name">Referred By Report</div>
+      <div class="rc-desc">All bookings grouped by referral source — select one or more referrers to see customer details</div>
+    </div>
   </div>
 
   <!-- Report view area -->
@@ -123,6 +128,29 @@
           <input type="date" id="pyDateTo" class="report-input" style="width:160px;">
         </div>
         <button class="btn-report-search" id="paymentsLoadBtn">Load Report</button>
+      </div>
+    </div>
+
+    <!-- Referred By controls -->
+    <div id="referredControls" class="report-controls" style="display:none;">
+      <div class="dues-filters" style="align-items:flex-end;gap:14px;">
+        <div class="filter-group" style="flex-direction:column;align-items:flex-start;">
+          <label style="margin-bottom:6px;">Referred By</label>
+          <div class="ref-multiselect" id="refMultiselect">
+            <div class="ref-trigger" id="refTrigger" onclick="toggleRefDropdown()">
+              <span id="refTriggerLabel">Select referrers…</span>
+              <span class="ref-arrow">▾</span>
+            </div>
+            <div class="ref-list" id="refList" style="display:none;">
+              <label class="ref-option ref-all">
+                <input type="checkbox" id="refSelectAll" onchange="toggleAllReferrers(this)">
+                <span>Select All</span>
+              </label>
+              <div id="refOptions"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-report-search" id="referredLoadBtn">Load Report</button>
       </div>
     </div>
 

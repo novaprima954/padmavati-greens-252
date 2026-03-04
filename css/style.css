@@ -1741,3 +1741,97 @@ header {
 .res-sch-table th { background:var(--mist); padding:4px 8px; text-align:left; font-weight:600; color:var(--grey); font-size:.68rem; text-transform:uppercase; }
 .res-sch-table td { padding:4px 8px; border-bottom:1px solid var(--border); }
 .res-sch-table tr:last-child td { border-bottom:none; }
+
+/* ── Referred By multiselect ─────────────────────── */
+.ref-multiselect {
+  position: relative;
+  min-width: 280px;
+}
+.ref-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1.5px solid var(--sage);
+  border-radius: var(--r);
+  background: #fff;
+  cursor: pointer;
+  font-size: .88rem;
+  color: var(--ink);
+  user-select: none;
+  min-height: 38px;
+  gap: 8px;
+}
+.ref-trigger:hover { border-color: var(--forest); }
+.ref-arrow { font-size: .7rem; color: var(--grey); flex-shrink:0; }
+.ref-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1.5px solid var(--sage);
+  border-radius: var(--r);
+  box-shadow: 0 6px 20px rgba(0,0,0,.12);
+  z-index: 200;
+  padding: 6px 0;
+}
+.ref-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  font-size: .86rem;
+  cursor: pointer;
+  color: var(--ink);
+}
+.ref-option:hover { background: var(--mist); }
+.ref-option.ref-all {
+  border-bottom: 1px solid var(--sage);
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--forest);
+}
+.ref-option input[type=checkbox] { accent-color: var(--forest); cursor: pointer; }
+.ref-tag-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ref-tag {
+  background: var(--forest);
+  color: #fff;
+  font-size: .75rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* ── Referred report table ───────────────────────── */
+.referred-section {
+  margin-bottom: 28px;
+}
+.referred-section-header {
+  background: var(--forest);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--r) var(--r) 0 0;
+  font-weight: 700;
+  font-size: .92rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.referred-section-header .ref-count {
+  font-size: .78rem;
+  opacity: .8;
+  font-weight: 400;
+}
+.referred-customer-row {
+  cursor: pointer;
+  transition: background .15s;
+}
+.referred-customer-row:hover td { background: var(--mist) !important; }
+.referred-customer-row td { padding: 9px 12px; }
