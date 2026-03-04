@@ -1701,12 +1701,13 @@ header {
 .res-modal-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   background: var(--mist);
   border-radius: var(--r);
   padding: 14px 16px;
+  word-break: break-word;
 }
-.res-modal-plot     { font-weight: 800; color: var(--forest); font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; white-space: nowrap; }
+.res-modal-plot     { font-weight: 800; color: var(--forest); font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; }
 .res-modal-customer { font-weight: 600; color: var(--ink); font-size: .9rem; }
 .res-modal-phone    { color: var(--grey); font-size: .82rem; }
 

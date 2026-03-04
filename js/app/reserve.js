@@ -290,28 +290,7 @@ function renderReservations(rows) {
       <span class="pec-amt-chip cr-chip2" style="font-size:.65rem;">CR ₹${Utils.fmtNum(crAmt)}</span>
     </div>` : '';
 
-    // Installment schedule — only if we have amounts
-    let scheduleRow = '';
-    if (brAmt > 0) {
-      const bd = resFieldToDate(r['Reserved At']) || new Date();
-      function addD(d,n){ const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
-      function fmtD(d){ return d.toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'}); }
-      const d10=fmtD(addD(bd,10)), d75=fmtD(addD(bd,75)), d165=fmtD(addD(bd,165));
-      const br1=Math.round(brAmt*.35), br2=Math.round(brAmt*.35), br3=brAmt-br1-br2;
-      const rr1=Math.round(rrAmt*.35), rr2=Math.round(rrAmt*.35), rr3=rrAmt-rr1-rr2;
-      const cr1=Math.round(crAmt*.35), cr2=Math.round(crAmt*.35), cr3=crAmt-cr1-cr2;
-      scheduleRow = `<div class="res-schedule">
-        <div class="res-sch-title">Installment Schedule</div>
-        <table class="res-sch-table">
-          <thead><tr><th>Part</th><th>Due Date</th><th>BR</th><th>RR</th><th>CR</th></tr></thead>
-          <tbody>
-            <tr><td>1 · 35%</td><td>${d10}</td><td>₹${Utils.fmtNum(br1)}</td><td>₹${Utils.fmtNum(rr1)}</td><td>₹${Utils.fmtNum(cr1)}</td></tr>
-            <tr><td>2 · 35%</td><td>${d75}</td><td>₹${Utils.fmtNum(br2)}</td><td>₹${Utils.fmtNum(rr2)}</td><td>₹${Utils.fmtNum(cr2)}</td></tr>
-            <tr><td>3 · 30%</td><td>${d165}</td><td>₹${Utils.fmtNum(br3)}</td><td>₹${Utils.fmtNum(rr3)}</td><td>₹${Utils.fmtNum(cr3)}</td></tr>
-          </tbody>
-        </table>
-      </div>`;
-    }
+
 
     return `<div class="res-card ${isActive?'res-card-active':''} ${urgent?'res-card-urgent':''}">
       <div class="res-card-head">
@@ -321,7 +300,7 @@ function renderReservations(rows) {
       <div class="res-card-customer">${r['Customer Name']||'—'} &nbsp;·&nbsp; ${r['Phone']||''}</div>
       ${rateRow}
       <div class="res-card-meta">Reserved by ${r['Reserved By']||'—'} &nbsp;·&nbsp; ${fmtResDate(r['Reserved At'])}</div>
-      ${isActive ? scheduleRow : ''}
+
       <div class="res-card-expiry ${urgent?'res-expiry-urgent':''}">
         ⏱ Expires: ${fmtResDate(String(r['Expiry Date']||'').trim() + ' ' + String(r['Expiry Time']||'').trim())}
         ${isActive?`<span class="res-timeleft">${timeLeft}</span>`:''}
