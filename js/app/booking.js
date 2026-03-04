@@ -15,6 +15,7 @@ let plotCounter    = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
   Header.init('booking');
+  Utils.setupOverlays();
 
   // Default booking date
   document.getElementById('f-bookdate').value = new Date().toISOString().split('T')[0];
