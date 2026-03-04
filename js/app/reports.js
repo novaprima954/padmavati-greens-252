@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('excessLoadBtn').addEventListener('click', () => loadExcess());
   document.getElementById('paymentsLoadBtn').addEventListener('click', () => loadPayments());
   document.getElementById('referredLoadBtn').addEventListener('click', () => loadReferred());
+  document.getElementById('receiptsLoadBtn').addEventListener('click', () => loadReceipts());
 
   // Close referred dropdown when clicking outside
   document.addEventListener('click', e => {
@@ -57,13 +58,15 @@ function openReport(report) {
   document.getElementById('duesControls').style.display      = 'none';
   document.getElementById('excessControls').style.display    = 'none';
   document.getElementById('referredControls').style.display  = 'none';
+  document.getElementById('receiptsControls').style.display  = 'none';
 
   const titles = {
     ledger:   ['Customer Ledger', 'Search by customer name to see all plots and balances'],
     dues:     ['Installment Due Report', 'All customers with outstanding installments'],
     excess:   ['Excess Payment Report', 'Customers where paid amount exceeds category total'],
     payments: ['Payment Receipt Report', 'All payment receipts filtered by date range'],
-    referred: ['Referred By Report', 'All bookings grouped by referral source'],
+    referred:  ['Referred By Report', 'All bookings grouped by referral source'],
+    receipts:  ['Receipt Number Audit', 'Cash and Bank series — gaps, cancelled and active receipts'],
   };
   document.getElementById('reportViewTitle').textContent = titles[report][0];
   document.getElementById('reportViewSub').textContent   = titles[report][1];
@@ -82,6 +85,9 @@ function openReport(report) {
   } else if (report==='referred') {
     document.getElementById('referredControls').style.display = 'block';
     initReferredDropdown();
+  } else if (report==='receipts') {
+    document.getElementById('receiptsControls').style.display = 'block';
+    loadReceipts();
   }
 }
 
@@ -692,4 +698,113 @@ function goToLedger(row) {
     document.getElementById('ledgerName').value = name;
     loadLedger(phone);
   }, 50);
+}
+
+
+// ── RECEIPT NUMBER AUDIT ──────────────────────────
+async function loadReceipts() {
+  const out    = document.getElementById('reportOutput');
+  const series = document.getElementById('receiptSeriesFilter').value;
+  out.innerHTML = '<div class="loading-state">Loading…</div>';
+
+  const res = await API.get({ action:'getReportReceipts', series });
+  if (res.error) { out.innerHTML = `<div class="empty-state"><p>${res.error}</p></div>`; return; }
+
+  let html = '';
+
+  function renderSeries(label, icon, data) {
+    if (!data || !data.rows.length) {
+      return `<div class="referred-section">
+        <div class="referred-section-header" style="background:var(--grey);">
+          <span>${icon} ${label} Series</span>
+          <span class="ref-count">No receipts recorded</span>
+        </div>
+      </div>`;
+    }
+
+    const { rows, gaps } = data;
+    const active    = rows.filter(r => r.status === 'Active');
+    const cancelled = rows.filter(r => r.status !== 'Active');
+    const totalAmt  = active.reduce((s,r) => s + r.amount, 0);
+    const minR = Math.min(...rows.map(r => r.receiptNo));
+    const maxR = Math.max(...rows.map(r => r.receiptNo));
+    const range = maxR - minR + 1;
+
+    // Build map for quick lookup
+    const issued = new Map();
+    rows.forEach(r => issued.set(r.receiptNo, r));
+
+    // Build full sequence including gaps
+    const allNums = [];
+    for (let n = minR; n <= maxR; n++) allNums.push(n);
+
+    let tbl = `
+      <div class="referred-section">
+        <div class="referred-section-header">
+          <span>${icon} ${label} Series</span>
+          <span class="ref-count">
+            Range ${minR}–${maxR} &nbsp;·&nbsp;
+            ${active.length} active &nbsp;·&nbsp;
+            ${cancelled.length} cancelled &nbsp;·&nbsp;
+            <span style="color:#ffcdd2">${gaps.length} missing</span>
+            &nbsp;·&nbsp; ₹${Utils.fmtNum(totalAmt)}
+          </span>
+        </div>`;
+
+    // Summary chips
+    tbl += `<div style="padding:10px 14px;background:#f9fafb;border-left:1px solid var(--sage);border-right:1px solid var(--sage);display:flex;gap:12px;flex-wrap:wrap;">
+      <div class="rsb-item"><span>Total in Range</span><strong>${range}</strong></div>
+      <div class="rsb-item"><span>Issued</span><strong>${rows.length}</strong></div>
+      <div class="rsb-item"><span>Active</span><strong style="color:var(--forest)">${active.length}</strong></div>
+      <div class="rsb-item"><span>Cancelled</span><strong style="color:var(--grey)">${cancelled.length}</strong></div>
+      <div class="rsb-item"><span>Missing</span><strong style="color:var(--red)">${gaps.length}</strong></div>
+      <div class="rsb-item"><span>Total Amount</span><strong>₹${Utils.fmtNum(totalAmt)}</strong></div>
+    </div>`;
+
+    tbl += `<table class="data-table" style="border-radius:0;border-top:none;">
+      <thead><tr>
+        <th>Receipt No</th><th>Status</th><th>Date</th>
+        <th>Amount</th><th>Mode</th><th>Customer</th>
+        <th>Plot</th><th>Booking Receipt</th><th>Notes</th>
+      </tr></thead>
+      <tbody>`;
+
+    allNums.forEach(n => {
+      if (issued.has(n)) {
+        const r = issued.get(n);
+        const isCancelled = r.status !== 'Active';
+        const style = isCancelled
+          ? 'background:#f5f5f5;color:#999;text-decoration:line-through;'
+          : '';
+        tbl += `<tr style="${style}">
+          <td><strong>${r.receiptNo}</strong></td>
+          <td><span class="status-badge" style="background:${isCancelled?'#eee':'#e8f5e9'};color:${isCancelled?'#999':'#2e7d32'}">${r.status}</span></td>
+          <td>${r.date||'—'}</td>
+          <td>${r.amount?'₹'+Utils.fmtNum(r.amount):'—'}</td>
+          <td>${r.mode||'—'}</td>
+          <td>${r.customer||'—'}</td>
+          <td>${r.plot||'—'}</td>
+          <td style="font-size:.78rem;color:var(--grey)">${r.bookingReceipt||'—'}</td>
+          <td style="font-size:.78rem;color:var(--grey)">${r.notes||'—'}</td>
+        </tr>`;
+      } else {
+        // Gap row
+        tbl += `<tr style="background:#fff3f3;">
+          <td><strong style="color:var(--red)">${n}</strong></td>
+          <td><span class="status-badge" style="background:#ffcdd2;color:#b71c1c;">⚠ Missing</span></td>
+          <td colspan="7" style="color:#b71c1c;font-size:.84rem;font-style:italic;">
+            Receipt not recorded — possibly skipped or unaccounted
+          </td>
+        </tr>`;
+      }
+    });
+
+    tbl += `</tbody></table></div>`;
+    return tbl;
+  }
+
+  if (series === 'all' || series === 'Cash') html += renderSeries('Cash', '💵', res.cash);
+  if (series === 'all' || series === 'Bank') html += renderSeries('Bank', '🏦', res.bank);
+
+  out.innerHTML = html || '<div class="empty-state"><p>No receipt data found.</p></div>';
 }

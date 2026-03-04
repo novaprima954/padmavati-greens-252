@@ -1835,3 +1835,17 @@ header {
 }
 .referred-customer-row:hover td { background: var(--mist) !important; }
 .referred-customer-row td { padding: 9px 12px; }
+
+/* ── Receipt Audit ───────────────────────────────── */
+.rsb-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 12px;
+  background: #fff;
+  border-radius: var(--r);
+  border: 1px solid var(--sage);
+  font-size: .8rem;
+}
+.rsb-item span  { color: var(--grey); font-size: .74rem; }
+.rsb-item strong{ font-size: .92rem; color: var(--ink); }

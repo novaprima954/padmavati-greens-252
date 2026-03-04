@@ -46,6 +46,11 @@
       <div class="rc-name">Referred By Report</div>
       <div class="rc-desc">All bookings grouped by referral source — select one or more referrers to see customer details</div>
     </div>
+    <div class="report-card" data-report="receipts">
+      <div class="rc-icon">🔢</div>
+      <div class="rc-name">Receipt Number Audit</div>
+      <div class="rc-desc">Cash and Bank receipt series — all issued receipts, missing gaps, and cancelled/voided numbers</div>
+    </div>
   </div>
 
   <!-- Report view area -->
@@ -151,6 +156,21 @@
           </div>
         </div>
         <button class="btn-report-search" id="referredLoadBtn">Load Report</button>
+      </div>
+    </div>
+
+    <!-- Receipt Audit controls -->
+    <div id="receiptsControls" class="report-controls" style="display:none;">
+      <div class="dues-filters">
+        <div class="filter-group">
+          <label>Series</label>
+          <select id="receiptSeriesFilter" class="select-filter">
+            <option value="all">Both Series</option>
+            <option value="Cash">Cash (2001+)</option>
+            <option value="Bank">Bank (1–2000)</option>
+          </select>
+        </div>
+        <button class="btn-report-search" id="receiptsLoadBtn">Load Report</button>
       </div>
     </div>
 
