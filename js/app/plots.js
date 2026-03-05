@@ -144,6 +144,13 @@ function openPlotModal(plotNo) {
   const [bg, fg, msg] = statusCfg[status] || statusCfg.Available;
   body += `<div style="background:${bg};color:${fg};border-radius:8px;padding:10px 14px;font-size:.85rem;font-weight:600;">${msg}</div>`;
 
+  // Placeholder for customer details (Booked only)
+  if (status === 'Booked') {
+    body += `<div id="plotCustomerInfo" style="margin-top:12px;">
+      <div style="font-size:.75rem;color:var(--grey);text-align:center;">Loading customer details…</div>
+    </div>`;
+  }
+
   document.getElementById('plotModalBody').innerHTML = body;
   const actions = document.getElementById('plotModalActions');
   if (status === 'Available') {
@@ -152,4 +159,51 @@ function openPlotModal(plotNo) {
     actions.innerHTML = '';
   }
   Utils.openOverlay('plotModal');
+
+  // Fetch and inject customer details for Booked plots
+  if (status === 'Booked' && p['Receipt No']) {
+    fetchPlotCustomerInfo(p['Receipt No']);
+  }
+}
+
+async function fetchPlotCustomerInfo(receiptNo) {
+  const el = document.getElementById('plotCustomerInfo');
+  if (!el) return;
+  try {
+    const res = await API.get({ action:'getBookingByReceipt', receiptNo });
+    if (res.error || !res.booking) {
+      el.innerHTML = '';
+      return;
+    }
+    const b = res.booking;
+    const name    = b['Customer Full Name'] || '—';
+    const phone   = b['Phone Number']       || '—';
+    const rcpt1   = b['Receipt Number 1']   || '—';
+    const bookedBy= b['Booked By Name']     || '—';
+
+    el.innerHTML = `
+      <div style="background:var(--mist);border-radius:10px;padding:14px;margin-top:4px;">
+        <div style="font-size:.7rem;color:var(--grey);font-weight:600;letter-spacing:.04em;margin-bottom:10px;">CUSTOMER DETAILS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <div style="font-size:.7rem;color:var(--grey);margin-bottom:2px;">Customer Name</div>
+            <div style="font-size:.9rem;font-weight:700;color:var(--ink);">${name}</div>
+          </div>
+          <div>
+            <div style="font-size:.7rem;color:var(--grey);margin-bottom:2px;">Mobile Number</div>
+            <div style="font-size:.9rem;font-weight:600;">${phone}</div>
+          </div>
+          <div>
+            <div style="font-size:.7rem;color:var(--grey);margin-bottom:2px;">Manual Receipt No</div>
+            <div style="font-size:.9rem;font-weight:600;color:var(--forest);">${rcpt1}</div>
+          </div>
+          <div>
+            <div style="font-size:.7rem;color:var(--grey);margin-bottom:2px;">Booked By</div>
+            <div style="font-size:.9rem;font-weight:500;">${bookedBy}</div>
+          </div>
+        </div>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '';
+  }
 }
