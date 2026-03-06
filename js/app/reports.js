@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('paymentsLoadBtn').addEventListener('click', () => loadPayments());
   document.getElementById('referredLoadBtn').addEventListener('click', () => loadReferred());
   document.getElementById('receiptsLoadBtn').addEventListener('click', () => loadReceipts());
+  document.getElementById('ratecompLoadBtn').addEventListener('click', () => loadRateComp());
 
   // Close referred dropdown when clicking outside
   document.addEventListener('click', e => {
@@ -59,6 +60,7 @@ function openReport(report) {
   document.getElementById('excessControls').style.display    = 'none';
   document.getElementById('referredControls').style.display  = 'none';
   document.getElementById('receiptsControls').style.display  = 'none';
+  document.getElementById('ratecompControls').style.display  = 'none';
 
   const titles = {
     ledger:   ['Customer Ledger', 'Search by customer name to see all plots and balances'],
@@ -67,6 +69,7 @@ function openReport(report) {
     payments: ['Payment Receipt Report', 'All payment receipts filtered by date range'],
     referred:  ['Referred By Report', 'All bookings grouped by referral source'],
     receipts:  ['Receipt Number Audit', 'Cash and Bank series — gaps, cancelled and active receipts'],
+    ratecomp:  ['Rate Comparison', 'Zone rate vs booked rate — discount, premium and revenue impact per plot'],
   };
   document.getElementById('reportViewTitle').textContent = titles[report][0];
   document.getElementById('reportViewSub').textContent   = titles[report][1];
@@ -88,6 +91,9 @@ function openReport(report) {
   } else if (report==='receipts') {
     document.getElementById('receiptsControls').style.display = 'block';
     loadReceipts();
+  } else if (report==='ratecomp') {
+    document.getElementById('ratecompControls').style.display = 'block';
+    initRateComp();
   }
 }
 
@@ -807,4 +813,152 @@ async function loadReceipts() {
   if (series === 'all' || series === 'Bank') html += renderSeries('Bank', '🏦', res.bank);
 
   out.innerHTML = html || '<div class="empty-state"><p>No receipt data found.</p></div>';
+}
+
+
+// ── RATE COMPARISON REPORT ────────────────────────
+async function initRateComp() {
+  // Load with no filters to get meta (zones, bookedBys)
+  const res = await API.get({ action:'getReportRateComparison' });
+  if (res.error) { Utils.toast(res.error,'err'); return; }
+
+  // Populate zone dropdown
+  const zoneEl = document.getElementById('rcZoneFilter');
+  zoneEl.innerHTML = '<option value="all">All Zones</option>' +
+    (res.meta.zones||[]).map(z => `<option value="${z}">₹${Utils.fmtNum(z)}/sqft</option>`).join('');
+
+  // Populate booked by dropdown
+  const byEl = document.getElementById('rcBookedByFilter');
+  byEl.innerHTML = '<option value="all">All Executives</option>' +
+    (res.meta.bookedBys||[]).map(b => `<option value="${b}">${b}</option>`).join('');
+
+  renderRateComp(res);
+}
+
+async function loadRateComp() {
+  const zone     = document.getElementById('rcZoneFilter').value;
+  const bookedBy = document.getElementById('rcBookedByFilter').value;
+  const pctMin   = document.getElementById('rcPctMin').value;
+  const pctMax   = document.getElementById('rcPctMax').value;
+  const out = document.getElementById('reportOutput');
+  out.innerHTML = '<div class="loading-state">Loading…</div>';
+  const res = await API.get({ action:'getReportRateComparison', zone, bookedBy, pctMin, pctMax });
+  if (res.error) { out.innerHTML = `<div class="empty-state"><p>${res.error}</p></div>`; return; }
+  renderRateComp(res);
+}
+
+function renderRateComp(res) {
+  const out = document.getElementById('reportOutput');
+  const { rows, scatter, totals, meta } = res;
+
+  if (!rows || !rows.length) {
+    out.innerHTML = '<div class="empty-state"><p>No booked plots with rate data found.</p></div>';
+    return;
+  }
+
+  // ── Scatter band summary ──
+  const totalScatter = scatter.reduce((s,b) => s+b.count, 0);
+  let scatterHtml = `
+    <div class="rc-scatter-wrap">
+      <div class="rc-scatter-title">Pricing Band Summary <span style="font-weight:400;font-size:.8rem;color:var(--grey);">(all booked plots, before filters)</span></div>
+      <div class="rc-bands">`;
+  scatter.forEach(b => {
+    const pct = Math.round(b.count / totalScatter * 100);
+    scatterHtml += `
+        <div class="rc-band">
+          <div class="rc-band-bar-wrap">
+            <div class="rc-band-bar" style="height:${Math.max(pct*2,6)}px;background:${b.color};"></div>
+          </div>
+          <div class="rc-band-count" style="color:${b.color}">${b.count}</div>
+          <div class="rc-band-label">${b.label}</div>
+          <div class="rc-band-pct">${pct}%</div>
+        </div>`;
+  });
+  scatterHtml += `</div></div>`;
+
+  // ── Revenue impact summary cards ──
+  const impactColor = totals.revenueImpact >= 0 ? 'var(--forest)' : 'var(--red)';
+  const impactIcon  = totals.revenueImpact >= 0 ? '▲' : '▼';
+  let summaryHtml = `
+    <div class="rc-summary-bar">
+      <div class="rsb-item">
+        <span>Plots Shown</span>
+        <strong>${rows.length} <span style="font-weight:400;font-size:.78rem;color:var(--grey);">of ${meta.totalBooked}</span></strong>
+      </div>
+      <div class="rsb-item">
+        <span>Total at Zone Rate</span>
+        <strong>₹${Utils.fmtNum(totals.zoneAmt)}</strong>
+      </div>
+      <div class="rsb-item">
+        <span>Total at Booked Rate</span>
+        <strong>₹${Utils.fmtNum(totals.bookedAmt)}</strong>
+      </div>
+      <div class="rsb-item">
+        <span>Revenue Impact</span>
+        <strong style="color:${impactColor}">${impactIcon} ₹${Utils.fmtNum(Math.abs(totals.revenueImpact))}</strong>
+      </div>
+    </div>`;
+
+  // ── Table ──
+  let tableHtml = `
+    <table class="data-table" style="margin-top:0;">
+      <thead><tr>
+        <th>Plot No</th>
+        <th>Area (SqFt)</th>
+        <th>Zone Rate</th>
+        <th>Booked Rate (BR)</th>
+        <th>Diff (₹/sqft)</th>
+        <th>% Change</th>
+        <th>Zone Total</th>
+        <th>Booked Total</th>
+        <th>Revenue Impact</th>
+        <th>Booked By</th>
+        <th>Date</th>
+      </tr></thead>
+      <tbody>`;
+
+  rows.forEach(r => {
+    const pct = r.pctDiff;
+    let pctColor, pctBg;
+    if      (pct < -10) { pctColor='#b71c1c'; pctBg='#ffebee'; }
+    else if (pct < -5)  { pctColor='#e53935'; pctBg='#fff3e0'; }
+    else if (pct < 0)   { pctColor='#ff8f00'; pctBg='#fff8e1'; }
+    else if (pct === 0) { pctColor='#2e7d32'; pctBg='#f1f8e9'; }
+    else if (pct <= 5)  { pctColor='#388e3c'; pctBg='#e8f5e9'; }
+    else                { pctColor='#1b5e20'; pctBg='#c8e6c9'; }
+
+    const impSign  = r.revenueImpact >= 0 ? '+' : '';
+    const impColor = r.revenueImpact >= 0 ? 'var(--forest)' : 'var(--red)';
+    const diffSign = r.diff >= 0 ? '+' : '';
+    const pctSign  = pct >= 0 ? '+' : '';
+
+    tableHtml += `<tr>
+      <td><strong>Plot ${r.plotNo}</strong></td>
+      <td>${Utils.fmtNum(r.sqft)}</td>
+      <td>₹${Utils.fmtNum(r.zoneRate)}</td>
+      <td>₹${Utils.fmtNum(r.bookedRate)}</td>
+      <td style="color:${impColor};font-weight:600;">${diffSign}₹${Utils.fmtNum(Math.abs(r.diff))}</td>
+      <td><span class="rc-pct-badge" style="background:${pctBg};color:${pctColor};">${pctSign}${pct.toFixed(2)}%</span></td>
+      <td>₹${Utils.fmtNum(r.zoneAmt)}</td>
+      <td>₹${Utils.fmtNum(r.bookedAmt)}</td>
+      <td style="color:${impColor};font-weight:600;">${impSign}₹${Utils.fmtNum(Math.abs(r.revenueImpact))}</td>
+      <td style="font-size:.82rem;">${r.bookedBy||'—'}</td>
+      <td style="font-size:.82rem;">${r.bookingDate||'—'}</td>
+    </tr>`;
+  });
+
+  // Totals footer
+  const tImpSign  = totals.revenueImpact >= 0 ? '+' : '';
+  const tImpColor = totals.revenueImpact >= 0 ? 'var(--forest)' : 'var(--red)';
+  tableHtml += `</tbody>
+    <tfoot><tr>
+      <td colspan="6" style="font-weight:700;text-align:right;padding:9px 12px;">Totals (filtered)</td>
+      <td style="font-weight:700;">₹${Utils.fmtNum(totals.zoneAmt)}</td>
+      <td style="font-weight:700;">₹${Utils.fmtNum(totals.bookedAmt)}</td>
+      <td style="font-weight:700;color:${tImpColor};">${tImpSign}₹${Utils.fmtNum(Math.abs(totals.revenueImpact))}</td>
+      <td colspan="2"></td>
+    </tr></tfoot>
+    </table>`;
+
+  out.innerHTML = scatterHtml + summaryHtml + tableHtml;
 }

@@ -51,6 +51,11 @@
       <div class="rc-name">Receipt Number Audit</div>
       <div class="rc-desc">Cash and Bank receipt series — all issued receipts, missing gaps, and cancelled/voided numbers</div>
     </div>
+    <div class="report-card" data-report="ratecomp">
+      <div class="rc-icon">📊</div>
+      <div class="rc-name">Rate Comparison</div>
+      <div class="rc-desc">Zone rate vs booked rate for each plot — discount/premium %, revenue impact, filter by zone, exec or % band</div>
+    </div>
   </div>
 
   <!-- Report view area -->
@@ -171,6 +176,33 @@
           </select>
         </div>
         <button class="btn-report-search" id="receiptsLoadBtn">Load Report</button>
+      </div>
+    </div>
+
+    <!-- Rate Comparison controls -->
+    <div id="ratecompControls" class="report-controls" style="display:none;">
+      <div class="dues-filters" style="flex-wrap:wrap;gap:12px;align-items:flex-end;">
+        <div class="filter-group">
+          <label>Zone Rate</label>
+          <select id="rcZoneFilter" class="select-filter" style="min-width:130px;">
+            <option value="all">All Zones</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Booked By</label>
+          <select id="rcBookedByFilter" class="select-filter" style="min-width:150px;">
+            <option value="all">All Executives</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>% Change Min</label>
+          <input type="number" id="rcPctMin" class="report-input" style="width:90px;" placeholder="e.g. −10">
+        </div>
+        <div class="filter-group">
+          <label>% Change Max</label>
+          <input type="number" id="rcPctMax" class="report-input" style="width:90px;" placeholder="e.g. 0">
+        </div>
+        <button class="btn-report-search" id="ratecompLoadBtn">Load Report</button>
       </div>
     </div>
 
