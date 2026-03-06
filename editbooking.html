@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Booking – Padmavati Greens</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="headerMount"></div>
+
+  <main class="page-wrap">
+    <!-- Search panel -->
+    <div class="section-card" id="searchPanel">
+      <div class="section-title">✏️ Edit Booking</div>
+      <div class="section-sub">Search by booking receipt number, manual receipt number, or customer name</div>
+      <div class="report-search-wrap" style="margin-top:16px;">
+        <input type="text" id="searchQuery" class="report-input" placeholder="Receipt No / Manual Receipt / Customer Name…" style="max-width:420px;">
+        <button class="btn-submit" id="searchBtn">Search</button>
+      </div>
+      <div id="searchResult" style="margin-top:18px;"></div>
+    </div>
+
+    <!-- Edit form (hidden until booking loaded) -->
+    <div class="section-card" id="editPanel" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+        <div>
+          <div class="section-title" id="editTitle">Edit Booking</div>
+          <div class="section-sub" id="editSub"></div>
+        </div>
+        <button class="btn-back" id="btnBackToSearch">← Back to Search</button>
+      </div>
+
+      <!-- Locked info bar -->
+      <div class="edit-locked-bar" id="lockedBar">
+        <div class="edit-locked-item">
+          <span class="edit-locked-label">Plot No</span>
+          <span class="edit-locked-val" id="lPlotNo">—</span>
+        </div>
+        <div class="edit-locked-item">
+          <span class="edit-locked-label">Manual Receipt No</span>
+          <span class="edit-locked-val" id="lReceiptNo">—</span>
+        </div>
+        <div class="edit-locked-item">
+          <span class="edit-locked-label">Booking Receipt</span>
+          <span class="edit-locked-val" id="lBookingReceipt">—</span>
+        </div>
+        <div class="edit-locked-item">
+          <span class="edit-locked-label">Status</span>
+          <span class="edit-locked-val" id="lStatus">—</span>
+        </div>
+      </div>
+
+      <form id="editForm" onsubmit="return false;">
+
+        <!-- Section: Customer -->
+        <div class="edit-section-label">Customer Details</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Customer Full Name <span class="req">*</span></label>
+            <input type="text" id="f-customerName" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label>Phone Number <span class="req">*</span></label>
+            <input type="tel" id="f-phone" class="form-input" maxlength="10" required>
+          </div>
+          <div class="form-group">
+            <label>Aadhaar Number</label>
+            <input type="text" id="f-aadhaar" class="form-input" maxlength="12">
+          </div>
+          <div class="form-group">
+            <label>PAN Number</label>
+            <input type="text" id="f-pan" class="form-input" maxlength="10">
+          </div>
+          <div class="form-group">
+            <label>Address</label>
+            <input type="text" id="f-address" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Referred By</label>
+            <input type="text" id="f-referredBy" class="form-input">
+          </div>
+        </div>
+
+        <!-- Section: Booking -->
+        <div class="edit-section-label" style="margin-top:20px;">Booking Details</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Booking Date <span class="req">*</span></label>
+            <input type="date" id="f-bookingDate" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label>Payment Mode <span class="req">*</span></label>
+            <select id="f-paymentMode" class="form-input">
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+              <option value="NEFT">NEFT</option>
+              <option value="RTGS">RTGS</option>
+              <option value="Cheque">Cheque</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Payment Reference</label>
+            <input type="text" id="f-paymentRef" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>Token Amount</label>
+            <input type="number" id="f-tokenAmount" class="form-input" min="0">
+          </div>
+          <div class="form-group">
+            <label>Remarks</label>
+            <input type="text" id="f-remarks" class="form-input">
+          </div>
+        </div>
+
+        <!-- Section: Rates -->
+        <div class="edit-section-label" style="margin-top:20px;">Rates & Amounts
+          <span style="font-size:.75rem;font-weight:400;color:var(--grey);margin-left:8px;">Area: <strong id="areaDisplay">—</strong> SqFt</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>BR Rate (₹/sqft) <span class="req">*</span></label>
+            <input type="number" id="f-br" class="form-input" min="0" step="0.01" oninput="recalcAmounts()">
+          </div>
+          <div class="form-group">
+            <label>RR Rate (₹/sqft) <span class="req">*</span></label>
+            <input type="number" id="f-rr" class="form-input" min="0" step="0.01" oninput="recalcAmounts()">
+          </div>
+          <div class="form-group">
+            <label>CR Rate (₹/sqft)</label>
+            <input type="number" id="f-cr" class="form-input" readonly style="background:var(--mist);">
+          </div>
+        </div>
+
+        <!-- Amount preview -->
+        <div class="edit-amount-preview" id="amountPreview">
+          <div class="eap-item">
+            <span>BR Amount</span>
+            <strong id="prev-br">₹0</strong>
+          </div>
+          <div class="eap-item">
+            <span>RR Amount</span>
+            <strong id="prev-rr">₹0</strong>
+          </div>
+          <div class="eap-item">
+            <span>CR Amount</span>
+            <strong id="prev-cr">₹0</strong>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
+          <button class="btn-submit" id="saveBtn" onclick="saveEdit()">💾 Save Changes</button>
+          <button class="btn-back" id="btnCancelEdit">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Edit Log panel -->
+    <div class="section-card" id="logPanel" style="display:none;margin-top:16px;">
+      <div class="section-title" style="font-size:.95rem;">📋 Edit History</div>
+      <div id="logContent"></div>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/app/editbooking.js"></script>
+</body>
+</html>

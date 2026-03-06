@@ -8,6 +8,7 @@ const Header = (() => {
     { label: '🏠 Home',        href: 'index.html',      page: 'index',      roles: ['admin','sales'] },
     { label: '📍 Plots',       href: 'plots.html',      page: 'plots',      roles: ['admin','sales'] },
     { label: '📝 Book',        href: 'booking.html',    page: 'booking',    roles: ['admin'] },
+    { label: '✏️ Edit',        href: 'editbooking.html', page: 'editbooking', roles: ['admin'] },
     { label: '📌 Reserve',     href: 'reserve.html',    page: 'reserve',    roles: ['admin','sales'] },
     { label: '🔍 Status',      href: 'status.html',     page: 'status',     roles: ['admin','sales'] },
     { label: '📋 Bookings',    href: 'bookings.html',   page: 'bookings',   roles: ['admin','sales'] },
