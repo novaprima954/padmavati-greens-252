@@ -25,7 +25,12 @@ async function loadStats() {
     document.getElementById('s-booked').textContent = s.booked;
     document.getElementById('s-res').textContent    = s.reserved;
     if (_session.role === 'admin') {
-      // token revenue card removed
+      const card = document.getElementById('s-unrecon-card');
+      if (card) {
+        card.style.display = 'flex';
+        document.getElementById('s-unrecon').textContent    = s.unreconCount ?? '—';
+        document.getElementById('s-unreconAmt').textContent = s.unreconAmt != null ? '₹' + Utils.fmtNum(s.unreconAmt) : '₹—';
+      }
     }
   } catch(e) {}
 }

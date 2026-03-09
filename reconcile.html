@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reconciliation – Padmavati Greens</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="headerMount"></div>
+  <main class="page-wrap">
+    <div class="section-card">
+      <div class="section-title">🔁 Payment Reconciliation</div>
+      <div class="section-sub">Mark payments as confirmed received — Cash and Bank/UPI</div>
+
+      <!-- Filters -->
+      <div class="recon-filters">
+        <div class="filter-group">
+          <label>Status</label>
+          <select id="rfStatus" class="select-filter">
+            <option value="unreconciled">Unreconciled</option>
+            <option value="reconciled">Reconciled</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Against</label>
+          <select id="rfAgainst" class="select-filter">
+            <option value="all">CR + RR</option>
+            <option value="CR">CR (Cash)</option>
+            <option value="RR">RR (Bank/UPI)</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Mode</label>
+          <select id="rfMode" class="select-filter">
+            <option value="all">All Modes</option>
+            <option value="Cash">Cash</option>
+            <option value="UPI">UPI</option>
+            <option value="NEFT">NEFT</option>
+            <option value="RTGS">RTGS</option>
+            <option value="Cheque">Cheque</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>From Date</label>
+          <input type="date" id="rfDateFrom" class="report-input" style="width:150px;">
+        </div>
+        <div class="filter-group">
+          <label>To Date</label>
+          <input type="date" id="rfDateTo" class="report-input" style="width:150px;">
+        </div>
+        <div class="filter-group">
+          <label>Group By</label>
+          <select id="rfGroupBy" class="select-filter">
+            <option value="customer">Customer / Booking</option>
+            <option value="receipt">Receipt Number</option>
+          </select>
+        </div>
+        <button class="btn-report-search" id="rfLoadBtn">Load</button>
+      </div>
+
+      <!-- Summary bar -->
+      <div id="reconSummary" style="display:none;" class="recon-summary-bar">
+        <div class="rsb-item"><span>Total</span><strong id="rs-total">—</strong></div>
+        <div class="rsb-item"><span>Total Amount</span><strong id="rs-totalAmt">—</strong></div>
+        <div class="rsb-item" style="border-color:#b71c1c;">
+          <span style="color:#b71c1c;">Unreconciled</span>
+          <strong id="rs-unrecon" style="color:#b71c1c;">—</strong>
+        </div>
+        <div class="rsb-item" style="border-color:#b71c1c;">
+          <span style="color:#b71c1c;">Unreconciled Amt</span>
+          <strong id="rs-unreconAmt" style="color:#b71c1c;">—</strong>
+        </div>
+        <div class="rsb-item" style="border-color:var(--forest);">
+          <span style="color:var(--forest);">Reconciled</span>
+          <strong id="rs-recon" style="color:var(--forest);">—</strong>
+        </div>
+        <div class="rsb-item" style="border-color:var(--forest);">
+          <span style="color:var(--forest);">Reconciled Amt</span>
+          <strong id="rs-reconAmt" style="color:var(--forest);">—</strong>
+        </div>
+      </div>
+
+      <!-- Bulk actions -->
+      <div id="bulkBar" style="display:none;" class="recon-bulk-bar">
+        <span id="selectedCount">0 selected</span>
+        <button class="btn-submit" style="padding:6px 16px;font-size:.84rem;" id="btnBulkRecon">✅ Mark Reconciled</button>
+        <button class="btn-back" style="padding:6px 16px;font-size:.84rem;" id="btnBulkUnrecon">↩ Unreconcile</button>
+        <button class="btn-back" style="padding:6px 14px;font-size:.84rem;" id="btnSelectAll">Select All</button>
+        <button class="btn-back" style="padding:6px 14px;font-size:.84rem;" id="btnClearAll">Clear</button>
+      </div>
+
+      <div id="reconOutput"></div>
+    </div>
+  </main>
+
+  <!-- Unreconcile reason modal -->
+  <div class="overlay" id="unreconModal">
+    <div class="overlay-card" style="max-width:420px;">
+      <div class="overlay-title">↩ Unreconcile Payment(s)</div>
+      <p style="font-size:.86rem;color:var(--grey);margin-bottom:12px;">Optionally provide a reason for unreconciling.</p>
+      <textarea id="unreconReason" class="form-input" rows="3" placeholder="Reason (optional)…" style="width:100%;resize:vertical;"></textarea>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn-submit" id="confirmUnreconBtn">Confirm</button>
+        <button class="btn-back" onclick="Utils.closeOverlay('unreconModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/app/reconcile.js"></script>
+</body>
+</html>

@@ -1989,3 +1989,138 @@ header {
   color: var(--forest);
   font-family: 'Cormorant Garamond', serif;
 }
+
+/* ── Reconciliation Page ─────────────────────────── */
+.s-unrecon {
+  flex-direction: column;
+  background: linear-gradient(135deg,#ffebee,#fff);
+  border: 1.5px solid #ef9a9a;
+  border-radius: var(--r);
+}
+.s-unrecon .stat-n { color: #b71c1c; }
+
+.recon-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  padding: 14px 0 18px;
+  border-bottom: 1px solid var(--sage);
+  margin-bottom: 16px;
+}
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.filter-group label {
+  font-size: .7rem;
+  color: var(--grey);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-weight: 600;
+}
+.recon-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.rsb-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 16px;
+  background: var(--mist);
+  border-radius: var(--r);
+  border-left: 3px solid var(--sage);
+  min-width: 130px;
+}
+.rsb-item span {
+  font-size: .68rem;
+  color: var(--grey);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.rsb-item strong {
+  font-size: 1rem;
+  color: var(--ink);
+  font-family: 'Cormorant Garamond', serif;
+}
+.recon-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: var(--r);
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--forest);
+}
+.recon-group {
+  margin-bottom: 20px;
+  border: 1px solid var(--sage);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.recon-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--mist);
+  border-bottom: 1px solid var(--sage);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.recon-group-header strong {
+  font-size: .92rem;
+  color: var(--ink);
+}
+.recon-group-sub {
+  font-size: .76rem;
+  color: var(--grey);
+  margin-left: 8px;
+}
+.recon-badge-reconciled {
+  font-size: .72rem;
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  border: 1px solid #a5d6a7;
+}
+.recon-badge-unreconciled {
+  font-size: .72rem;
+  background: #ffebee;
+  color: #b71c1c;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  border: 1px solid #ef9a9a;
+}
+.btn-inline-sm {
+  font-size: .75rem;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity .15s;
+}
+.btn-inline-sm:hover { opacity: .8; }
+.btn-recon {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+.btn-unrecon {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
