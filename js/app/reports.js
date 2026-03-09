@@ -27,6 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('referredLoadBtn').addEventListener('click', () => loadReferred());
   document.getElementById('receiptsLoadBtn').addEventListener('click', () => loadReceipts());
   document.getElementById('ratecompLoadBtn').addEventListener('click', () => loadRateComp());
+  document.getElementById('custLoadBtn').addEventListener('click', () => loadCustomers());
+  document.getElementById('custExportBtn').addEventListener('click', () => exportCustomersExcel());
+  document.getElementById('custSort').addEventListener('change', renderCustomers);
+  document.getElementById('custSplit').addEventListener('change', renderCustomers);
 
   // Close referred dropdown when clicking outside
   document.addEventListener('click', e => {
@@ -61,6 +65,8 @@ function openReport(report) {
   document.getElementById('referredControls').style.display  = 'none';
   document.getElementById('receiptsControls').style.display  = 'none';
   document.getElementById('ratecompControls').style.display  = 'none';
+  document.getElementById('customersControls').style.display = 'none';
+  document.getElementById('custExportBtn').style.display     = 'none';
 
   const titles = {
     ledger:   ['Customer Ledger', 'Search by customer name to see all plots and balances'],
@@ -69,7 +75,8 @@ function openReport(report) {
     payments: ['Payment Receipt Report', 'All payment receipts filtered by date range'],
     referred:  ['Referred By Report', 'All bookings grouped by referral source'],
     receipts:  ['Receipt Number Audit', 'Cash and Bank series — gaps, cancelled and active receipts'],
-    ratecomp:  ['Rate Comparison', 'Zone rate vs booked rate — discount, premium and revenue impact per plot'],
+    ratecomp:   ['Rate Comparison', 'Zone rate vs booked rate — discount, premium and revenue impact per plot'],
+    customers:  ['Customer Summary', 'All active customers — payments received, total amount and outstanding due'],
   };
   document.getElementById('reportViewTitle').textContent = titles[report][0];
   document.getElementById('reportViewSub').textContent   = titles[report][1];
@@ -94,6 +101,9 @@ function openReport(report) {
   } else if (report==='ratecomp') {
     document.getElementById('ratecompControls').style.display = 'block';
     initRateComp();
+  } else if (report==='customers') {
+    document.getElementById('customersControls').style.display = 'block';
+    loadCustomers();
   }
 }
 
@@ -961,4 +971,222 @@ function renderRateComp(res) {
     </table>`;
 
   out.innerHTML = scatterHtml + summaryHtml + tableHtml;
+}
+
+// ── CUSTOMER SUMMARY REPORT ───────────────────────
+let _custRows = [];
+
+async function loadCustomers() {
+  const btn = document.getElementById('custLoadBtn');
+  const out = document.getElementById('reportOutput');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  out.innerHTML = '<div class="loading-state">Loading customer data…</div>';
+
+  try {
+    const res = await API.get({ action: 'getReportCustomers' });
+    if (res.error) throw new Error(res.error);
+    _custRows = res.rows || [];
+    document.getElementById('custExportBtn').style.display = _custRows.length ? 'inline-block' : 'none';
+    renderCustomers();
+  } catch(e) {
+    out.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Load Report';
+  }
+}
+
+function sortedCustomers() {
+  const sort = document.getElementById('custSort').value;
+  const rows = [..._custRows];
+  if (sort === 'name_asc')   rows.sort((a,b) => a.customerName.localeCompare(b.customerName));
+  if (sort === 'name_desc')  rows.sort((a,b) => b.customerName.localeCompare(a.customerName));
+  if (sort === 'paid_asc')   rows.sort((a,b) => a.paidTotal - b.paidTotal);
+  if (sort === 'paid_desc')  rows.sort((a,b) => b.paidTotal - a.paidTotal);
+  if (sort === 'due_asc')    rows.sort((a,b) => a.due - b.due);
+  if (sort === 'due_desc')   rows.sort((a,b) => b.due - a.due);
+  return rows;
+}
+
+function renderCustomers() {
+  const out   = document.getElementById('reportOutput');
+  const split = document.getElementById('custSplit').value;
+  const rows  = sortedCustomers();
+
+  if (!rows.length) {
+    out.innerHTML = '<div class="empty-state"><p>No active bookings found.</p></div>';
+    return;
+  }
+
+  // Totals
+  let totAmt = 0, totPaid = 0, totDue = 0;
+  let totBR = 0, totRR = 0, totCR = 0;
+  let totPaidCR = 0, totPaidRR = 0;
+  rows.forEach(r => {
+    totAmt  += r.totalAmt;  totPaid += r.paidTotal; totDue  += r.due;
+    totBR   += r.brAmt;     totRR   += r.rrAmt;     totCR   += r.crAmt;
+    totPaidCR += r.paidCR;  totPaidRR += r.paidRR;
+  });
+
+  const showAmtSplit = split === 'amount' || split === 'both';
+  const showDueSplit = split === 'due'    || split === 'both';
+
+  // Summary cards
+  const summHtml = `
+    <div class="cust-summary-strip">
+      <div class="cust-sum-card"><span>Total Customers</span><strong>${rows.length}</strong></div>
+      <div class="cust-sum-card"><span>Total Amount</span><strong>₹${Utils.fmtNum(totAmt)}</strong></div>
+      <div class="cust-sum-card" style="border-color:var(--forest);"><span>Total Received</span><strong style="color:var(--forest);">₹${Utils.fmtNum(totPaid)}</strong></div>
+      <div class="cust-sum-card" style="border-color:var(--red);"><span>Total Due</span><strong style="color:var(--red);">₹${Utils.fmtNum(totDue)}</strong></div>
+      ${showAmtSplit ? `
+        <div class="cust-sum-card" style="border-color:#1565c0;">
+          <span>BR (Full Value)</span><strong style="color:#1565c0;">₹${Utils.fmtNum(totBR)}</strong>
+        </div>
+        <div class="cust-sum-card" style="border-color:#1565c0;">
+          <span>RR (Bank)</span><strong style="color:#1565c0;">₹${Utils.fmtNum(totRR)}</strong>
+        </div>
+        <div class="cust-sum-card" style="border-color:#e65100;">
+          <span>CR (Cash)</span><strong style="color:#e65100;">₹${Utils.fmtNum(totCR)}</strong>
+        </div>` : ''}
+      ${showDueSplit ? `
+        <div class="cust-sum-card" style="border-color:#1565c0;">
+          <span>RR Paid</span><strong style="color:#1565c0;">₹${Utils.fmtNum(totPaidRR)}</strong>
+        </div>
+        <div class="cust-sum-card" style="border-color:#e65100;">
+          <span>CR Paid</span><strong style="color:#e65100;">₹${Utils.fmtNum(totPaidCR)}</strong>
+        </div>
+        <div class="cust-sum-card" style="border-color:var(--red);">
+          <span>RR Due</span><strong style="color:var(--red);">₹${Utils.fmtNum(totRR - totPaidRR)}</strong>
+        </div>
+        <div class="cust-sum-card" style="border-color:var(--red);">
+          <span>CR Due</span><strong style="color:var(--red);">₹${Utils.fmtNum(totCR - totPaidCR)}</strong>
+        </div>` : ''}
+    </div>`;
+
+  // Build table header
+  let thBase = `<th>#</th><th>Customer Name</th><th>Plot</th><th>Mobile</th><th>Booking Date</th>`;
+  let thAmt  = showAmtSplit
+    ? `<th>BR Amount</th><th>RR Amount</th><th>CR Amount</th>`
+    : `<th>Total Amount</th>`;
+  let thPaid = `<th>CR Received</th><th>RR Received</th><th>Total Received</th>`;
+  let thDue  = showDueSplit
+    ? `<th>CR Due</th><th>RR Due</th><th>Total Due</th>`
+    : `<th>Total Due</th>`;
+
+  let tableHtml = `
+    <table class="data-table" id="custTable">
+      <thead><tr>${thBase}${thAmt}${thPaid}${thDue}</tr></thead>
+      <tbody>`;
+
+  rows.forEach((r, idx) => {
+    const dueCls = r.due > 0 ? 'color:var(--red);font-weight:700;' : 'color:var(--forest);font-weight:700;';
+    const crDue  = Math.max(0, r.crAmt - r.paidCR);
+    const rrDue  = Math.max(0, r.rrAmt - r.paidRR);
+
+    let tdAmt = showAmtSplit
+      ? `<td>₹${Utils.fmtNum(r.brAmt)}</td><td>₹${Utils.fmtNum(r.rrAmt)}</td><td>₹${Utils.fmtNum(r.crAmt)}</td>`
+      : `<td><strong>₹${Utils.fmtNum(r.totalAmt)}</strong></td>`;
+    let tdPaid = `<td>₹${Utils.fmtNum(r.paidCR)}</td><td>₹${Utils.fmtNum(r.paidRR)}</td><td><strong>₹${Utils.fmtNum(r.paidTotal)}</strong></td>`;
+    let tdDue  = showDueSplit
+      ? `<td style="${dueCls}">₹${Utils.fmtNum(crDue)}</td><td style="${dueCls}">₹${Utils.fmtNum(rrDue)}</td><td style="${dueCls}">₹${Utils.fmtNum(r.due)}</td>`
+      : `<td style="${dueCls}">₹${Utils.fmtNum(r.due)}</td>`;
+
+    tableHtml += `<tr>
+      <td style="color:var(--grey);font-size:.78rem;">${idx+1}</td>
+      <td><strong>${r.customerName}</strong><br><span style="font-size:.74rem;color:var(--grey);">${r.receiptNo}</span></td>
+      <td>Plot ${r.plotNo}</td>
+      <td>${r.phone||'—'}</td>
+      <td style="font-size:.82rem;">${r.bookingDate||'—'}</td>
+      ${tdAmt}${tdPaid}${tdDue}
+    </tr>`;
+  });
+
+  // Footer totals
+  let tfAmt = showAmtSplit
+    ? `<td>₹${Utils.fmtNum(totBR)}</td><td>₹${Utils.fmtNum(totRR)}</td><td>₹${Utils.fmtNum(totCR)}</td>`
+    : `<td>₹${Utils.fmtNum(totAmt)}</td>`;
+  let tfPaid = `<td>₹${Utils.fmtNum(totPaidCR)}</td><td>₹${Utils.fmtNum(totPaidRR)}</td><td>₹${Utils.fmtNum(totPaid)}</td>`;
+  let tfDue  = showDueSplit
+    ? `<td>₹${Utils.fmtNum(totCR - totPaidCR)}</td><td>₹${Utils.fmtNum(totRR - totPaidRR)}</td><td>₹${Utils.fmtNum(totDue)}</td>`
+    : `<td>₹${Utils.fmtNum(totDue)}</td>`;
+
+  tableHtml += `</tbody>
+    <tfoot><tr>
+      <td colspan="5" style="font-weight:700;text-align:right;padding:9px 12px;">TOTAL (${rows.length} customers)</td>
+      ${tfAmt}${tfPaid}${tfDue}
+    </tr></tfoot>
+    </table>`;
+
+  out.innerHTML = summHtml + tableHtml;
+}
+
+// ── EXCEL EXPORT ──────────────────────────────────
+function exportCustomersExcel() {
+  const split = document.getElementById('custSplit').value;
+  const rows  = sortedCustomers();
+  if (!rows.length) { Utils.toast('No data to export', 'err'); return; }
+
+  const showAmtSplit = split === 'amount' || split === 'both';
+  const showDueSplit = split === 'due'    || split === 'both';
+
+  const headers = ['#','Customer Name','Receipt No','Plot No','Mobile','Booking Date'];
+  if (showAmtSplit) {
+    headers.push('BR Amount','RR Amount','CR Amount');
+  } else {
+    headers.push('Total Amount');
+  }
+  headers.push('CR Received','RR Received','Total Received');
+  if (showDueSplit) {
+    headers.push('CR Due','RR Due','Total Due');
+  } else {
+    headers.push('Total Due');
+  }
+
+  const dataRows = rows.map((r, i) => {
+    const crDue = Math.max(0, r.crAmt - r.paidCR);
+    const rrDue = Math.max(0, r.rrAmt - r.paidRR);
+    const row = [i+1, r.customerName, r.receiptNo, 'Plot ' + r.plotNo, r.phone, r.bookingDate];
+    if (showAmtSplit) {
+      row.push(r.brAmt, r.rrAmt, r.crAmt);
+    } else {
+      row.push(r.totalAmt);
+    }
+    row.push(r.paidCR, r.paidRR, r.paidTotal);
+    if (showDueSplit) {
+      row.push(crDue, rrDue, r.due);
+    } else {
+      row.push(r.due);
+    }
+    return row;
+  });
+
+  // Totals row
+  let totAmt=0,totPaid=0,totDue=0,totBR=0,totRR=0,totCR=0,totPaidCR=0,totPaidRR=0;
+  rows.forEach(r => {
+    totAmt+=r.totalAmt; totPaid+=r.paidTotal; totDue+=r.due;
+    totBR+=r.brAmt; totRR+=r.rrAmt; totCR+=r.crAmt;
+    totPaidCR+=r.paidCR; totPaidRR+=r.paidRR;
+  });
+  const totRow = ['','TOTAL','','','',''];
+  if (showAmtSplit) totRow.push(totBR, totRR, totCR); else totRow.push(totAmt);
+  totRow.push(totPaidCR, totPaidRR, totPaid);
+  if (showDueSplit) totRow.push(totCR-totPaidCR, totRR-totPaidRR, totDue); else totRow.push(totDue);
+  dataRows.push(totRow);
+
+  // Build CSV with BOM for Excel UTF-8
+  const bom  = '\uFEFF';
+  const csv  = bom + [headers, ...dataRows]
+    .map(row => row.map(v => '"' + String(v??'').replace(/"/g,'""') + '"').join(','))
+    .join('\r\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const ts   = new Date().toLocaleDateString('en-IN').replace(/\//g,'-');
+  a.href     = url;
+  a.download = `PG_Customer_Summary_${ts}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  Utils.toast('Excel file downloaded', 'ok');
 }

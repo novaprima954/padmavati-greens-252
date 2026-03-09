@@ -51,6 +51,10 @@
       <div class="rc-name">Receipt Number Audit</div>
       <div class="rc-desc">Cash and Bank receipt series — all issued receipts, missing gaps, and cancelled/voided numbers</div>
     </div>
+    <div class="report-card" data-report="customers">
+      <div class="rc-icon">👥</div>
+      <div class="rc-name">Customer Summary</div>
+    </div>
     <div class="report-card" data-report="ratecomp">
       <div class="rc-icon">📊</div>
       <div class="rc-name">Rate Comparison</div>
@@ -207,6 +211,34 @@
     </div>
 
     <!-- Report output -->
+    <!-- Customer Summary controls -->
+    <div id="customersControls" class="report-controls" style="display:none;">
+      <div class="rc-filter-row">
+        <div class="filter-group">
+          <label>Sort By</label>
+          <select id="custSort" class="select-filter">
+            <option value="name_asc">Customer Name A→Z</option>
+            <option value="name_desc">Customer Name Z→A</option>
+            <option value="paid_asc">Payment Received Low→High</option>
+            <option value="paid_desc">Payment Received High→Low</option>
+            <option value="due_desc">Due Amount High→Low</option>
+            <option value="due_asc">Due Amount Low→High</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Split</label>
+          <select id="custSplit" class="select-filter">
+            <option value="none">No Split</option>
+            <option value="amount">Total Amount Split (BR/RR/CR)</option>
+            <option value="due">Due Split (CR Due / RR Due)</option>
+            <option value="both">Both Splits</option>
+          </select>
+        </div>
+        <button class="btn-report-search" id="custLoadBtn">Load Report</button>
+        <button class="btn-back" id="custExportBtn" style="display:none;">⬇ Export Excel</button>
+      </div>
+    </div>
+
     <div id="reportOutput"></div>
   </div>
 </div>

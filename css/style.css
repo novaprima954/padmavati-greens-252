@@ -2124,3 +2124,38 @@ header {
   color: #e65100;
   border: 1px solid #ffcc80;
 }
+
+/* ── Customer Summary Report ─────────────────────── */
+.cust-summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.cust-sum-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 16px;
+  background: var(--mist);
+  border-radius: var(--r);
+  border-left: 3px solid var(--sage);
+  min-width: 130px;
+}
+.cust-sum-card span {
+  font-size: .68rem;
+  color: var(--grey);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.cust-sum-card strong {
+  font-size: 1rem;
+  color: var(--ink);
+  font-family: 'Cormorant Garamond', serif;
+}
+.rc-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
