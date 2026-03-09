@@ -216,11 +216,17 @@ function renderLedger(data) {
           <div>
             <span class="lpc-plot">Plot ${r.plotNo}</span>
             <span class="lpc-receipt">${r.receipt}</span>
+            ${r.manualReceipt ? `<span class="lpc-receipt" style="margin-left:4px;background:#e8f5e9;color:#2e7d32;">Rcpt #${r.manualReceipt}</span>` : ''}
           </div>
-          <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <span style="font-size:.75rem;color:var(--grey);">${r.bookingDate||''} · ${r.area?r.area+' SqFt':''}</span>
             ${Utils.statusBadge(r.status)}
           </div>
+        </div>
+        <div class="lpc-rates-bar">
+          <span class="lpc-rate-chip lpc-rate-br">BR ₹${r.brRate}/sqft</span>
+          <span class="lpc-rate-chip lpc-rate-rr">RR ₹${r.rrRate}/sqft</span>
+          <span class="lpc-rate-chip lpc-rate-cr">CR ₹${r.crRate}/sqft</span>
         </div>
 
         <!-- Balance summary -->
@@ -229,19 +235,19 @@ function renderLedger(data) {
             <div class="lpc-bal-label">BR</div>
             <div class="lpc-bal-total">₹${Utils.fmtNum(r.brAmt)}</div>
             <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(r.brPaid)}</div>
-            <div class="lpc-bal-due ${r.brBal>0?'due-red':'due-green'}">Bal ₹${Utils.fmtNum(r.brBal)}</div>
+            <div class="lpc-bal-due ${r.brBal>0?'due-red':r.brBal<0?'due-excess':'due-green'}">${Utils.fmtBal(r.brBal)}</div>
           </div>
           <div class="lpc-bal-cell lpc-rr">
             <div class="lpc-bal-label">RR</div>
             <div class="lpc-bal-total">₹${Utils.fmtNum(r.rrAmt)}</div>
             <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(r.rrPaid)}</div>
-            <div class="lpc-bal-due ${r.rrBal>0?'due-red':'due-green'}">Bal ₹${Utils.fmtNum(r.rrBal)}</div>
+            <div class="lpc-bal-due ${r.rrBal>0?'due-red':r.rrBal<0?'due-excess':'due-green'}">${Utils.fmtBal(r.rrBal)}</div>
           </div>
           <div class="lpc-bal-cell lpc-cr">
             <div class="lpc-bal-label">CR</div>
             <div class="lpc-bal-total">₹${Utils.fmtNum(r.crAmt)}</div>
             <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(r.crPaid)}</div>
-            <div class="lpc-bal-due ${r.crBal>0?'due-red':'due-green'}">Bal ₹${Utils.fmtNum(r.crBal)}</div>
+            <div class="lpc-bal-due ${r.crBal>0?'due-red':r.crBal<0?'due-excess':'due-green'}">${Utils.fmtBal(r.crBal)}</div>
           </div>
         </div>
 
@@ -273,19 +279,19 @@ function renderLedger(data) {
             <div class="lpc-bal-label">BR Total</div>
             <div class="lpc-bal-total">₹${Utils.fmtNum(totals.brAmt)}</div>
             <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(totals.brPaid)}</div>
-            <div class="lpc-bal-due ${totals.brBal>0?'due-red':'due-green'}">Bal ₹${Utils.fmtNum(totals.brBal)}</div>
+            <div class="lpc-bal-due ${totals.brBal>0?'due-red':totals.brBal<0?'due-excess':'due-green'}">${Utils.fmtBal(totals.brBal)}</div>
           </div>
           <div class="lpc-bal-cell lpc-rr">
             <div class="lpc-bal-label">RR Total</div>
             <div class="lpc-bal-total">₹${Utils.fmtNum(totals.rrAmt)}</div>
             <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(totals.rrPaid)}</div>
-            <div class="lpc-bal-due ${totals.rrBal>0?'due-red':'due-green'}">Bal ₹${Utils.fmtNum(totals.rrBal)}</div>
+            <div class="lpc-bal-due ${totals.rrBal>0?'due-red':totals.rrBal<0?'due-excess':'due-green'}">${Utils.fmtBal(totals.rrBal)}</div>
           </div>
           <div class="lpc-bal-cell lpc-cr">
             <div class="lpc-bal-label">CR Total</div>
             <div class="lpc-bal-total">₹${Utils.fmtNum(totals.crAmt)}</div>
             <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(totals.crPaid)}</div>
-            <div class="lpc-bal-due ${totals.crBal>0?'due-red':'due-green'}">Bal ₹${Utils.fmtNum(totals.crBal)}</div>
+            <div class="lpc-bal-due ${totals.crBal>0?'due-red':totals.crBal<0?'due-excess':'due-green'}">${Utils.fmtBal(totals.crBal)}</div>
           </div>
         </div>
       </div>`;

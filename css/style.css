@@ -2159,3 +2159,27 @@ header {
   gap: 12px;
   align-items: flex-end;
 }
+
+/* ── Ledger rates bar + excess balance ──────────── */
+.lpc-rates-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 16px 10px;
+  background: var(--mist);
+  border-bottom: 1px solid var(--sage);
+}
+.lpc-rate-chip {
+  font-size: .72rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 20px;
+  letter-spacing: .02em;
+}
+.lpc-rate-br { background: #e8eaf6; color: #283593; }
+.lpc-rate-rr { background: #e3f2fd; color: #1565c0; }
+.lpc-rate-cr { background: #fbe9e7; color: #bf360c; }
+.due-excess {
+  color: #6a1b9a !important;
+  font-weight: 700;
+}

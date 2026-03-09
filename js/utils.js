@@ -84,5 +84,12 @@ const Utils = (() => {
     return null;
   }
 
-  return { toast, fmtNum, fmtCurrency, openOverlay, closeOverlay, setupOverlays, setLoading, statusBadge, calcNetDue, receiptToMode };
+  // fmtBal: negative = excess (shows as −₹X), zero = clear, positive = due
+  function fmtBal(n) {
+    if (n < 0) return '−₹' + fmtNum(Math.abs(n)) + ' excess';
+    if (n === 0) return 'Bal ₹0 ✓';
+    return 'Bal ₹' + fmtNum(n);
+  }
+
+  return { toast, fmtNum, fmtBal, fmtCurrency, openOverlay, closeOverlay, setupOverlays, setLoading, statusBadge, calcNetDue, receiptToMode };
 })();
