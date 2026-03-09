@@ -2183,3 +2183,10 @@ header {
   color: #6a1b9a !important;
   font-weight: 700;
 }
+
+/* ── Ledger installment excess row ──────────────── */
+.inst-excess-row {
+  background: #f3e5f5;
+  border-top: 1.5px dashed #ce93d8;
+  font-size: .78rem;
+}

@@ -162,9 +162,14 @@ function renderLedger(data) {
     // catKey: 'rr', 'cr', 'br'
     const cls = {rr:'inst-rr', cr:'inst-cr', br:'inst-br'}[catKey];
     const lbl = catKey.toUpperCase();
+    // Compute excess for this category
+    const catAmt  = insts.reduce((s,inst) => s + inst[catKey].gross, 0);
+    const catPaid = insts.reduce((s,inst) => s + inst[catKey].paid,  0);
+    const catExcess = catPaid - catAmt; // positive = excess
+
     return `<div class="inst-mini ${cls}">
       <div class="inst-mini-title">${lbl} Schedule</div>
-      <div class="inst-mini-row hdr"><span>Part</span><span>Due</span><span>Total</span><span>Paid</span><span>Due</span></div>
+      <div class="inst-mini-row hdr"><span>Part</span><span>Due Date</span><span>Total</span><span>Paid</span><span>Due</span></div>
       ${insts.map((inst,i) => {
         const d = inst[catKey];
         const nc = d.due===0 ? 'net-clear' : 'net-due';
@@ -176,6 +181,11 @@ function renderLedger(data) {
           <span class="${nc}">₹${Utils.fmtNum(d.due)}</span>
         </div>`;
       }).join('')}
+      ${catExcess > 0 ? `<div class="inst-mini-row inst-excess-row">
+        <span colspan="2" style="font-weight:700;color:#6a1b9a;">⚠ Excess</span>
+        <span></span><span></span>
+        <span style="color:#6a1b9a;font-weight:700;">−₹${Utils.fmtNum(catExcess)}</span>
+      </div>` : ''}
     </div>`;
   }
 
@@ -236,18 +246,21 @@ function renderLedger(data) {
             <div class="lpc-bal-total">₹${Utils.fmtNum(r.brAmt)}</div>
             <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(r.brPaid)}</div>
             <div class="lpc-bal-due ${r.brBal>0?'due-red':r.brBal<0?'due-excess':'due-green'}">${Utils.fmtBal(r.brBal)}</div>
+            ${r.brBal<0?`<div style="font-size:.68rem;color:#6a1b9a;font-weight:700;">Excess ₹${Utils.fmtNum(Math.abs(r.brBal))}</div>`:''}
           </div>
           <div class="lpc-bal-cell lpc-rr">
             <div class="lpc-bal-label">RR</div>
             <div class="lpc-bal-total">₹${Utils.fmtNum(r.rrAmt)}</div>
             <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(r.rrPaid)}</div>
             <div class="lpc-bal-due ${r.rrBal>0?'due-red':r.rrBal<0?'due-excess':'due-green'}">${Utils.fmtBal(r.rrBal)}</div>
+            ${r.rrBal<0?`<div style="font-size:.68rem;color:#6a1b9a;font-weight:700;">Excess ₹${Utils.fmtNum(Math.abs(r.rrBal))}</div>`:''}
           </div>
           <div class="lpc-bal-cell lpc-cr">
             <div class="lpc-bal-label">CR</div>
             <div class="lpc-bal-total">₹${Utils.fmtNum(r.crAmt)}</div>
             <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(r.crPaid)}</div>
             <div class="lpc-bal-due ${r.crBal>0?'due-red':r.crBal<0?'due-excess':'due-green'}">${Utils.fmtBal(r.crBal)}</div>
+            ${r.crBal<0?`<div style="font-size:.68rem;color:#6a1b9a;font-weight:700;">Excess ₹${Utils.fmtNum(Math.abs(r.crBal))}</div>`:''}
           </div>
         </div>
 
