@@ -275,8 +275,68 @@ function buildPreview() {
     i = j;
   }
 
-  allocations = openSlots;
-  renderPreview(openSlots, totalAmt, mode);
+  // After distribution — any remaining amount becomes excess
+  const totalDue = openSlots.reduce((s, sl) => s + sl.netDue, 0);
+  const totalAllocated = openSlots.reduce((s, sl) => s + (sl.allocated||0), 0);
+  let excessAmt = Math.round(totalAmt - totalAllocated);
+
+  // Build final slot list — include excess rows per plot if needed
+  const finalSlots = [...openSlots];
+
+  if (excessAmt > 0) {
+    // One excess row per selected plot (split equally if multiple)
+    const excessPerPlot = Math.round(excessAmt / plots.length);
+    let excessLeft = excessAmt;
+    plots.forEach((p, idx) => {
+      const isLast = idx === plots.length - 1;
+      const thisExcess = isLast ? excessLeft : excessPerPlot;
+      excessLeft -= thisExcess;
+      finalSlots.push({
+        plotNo:       p['Plot No'],
+        receiptNo:    p['Receipt No'],
+        customerName: p['Customer Full Name'],
+        bookingDate:  p['Booking Date'],
+        part:         'excess',
+        gross:        0,
+        alreadyPaid:  0,
+        netDue:       0,
+        dueDate:      null,
+        dueDateMs:    0,
+        dueDateStr:   '—',
+        allocated:    thisExcess,
+        isExcess:     true,
+      });
+    });
+  }
+
+  // Also: if ALL slots already paid and no open slots, add excess rows
+  if (openSlots.length === 0) {
+    const excessPerPlot = Math.round(totalAmt / plots.length);
+    let excessLeft = totalAmt;
+    plots.forEach((p, idx) => {
+      const isLast = idx === plots.length - 1;
+      const thisExcess = isLast ? excessLeft : excessPerPlot;
+      excessLeft -= thisExcess;
+      finalSlots.push({
+        plotNo:       p['Plot No'],
+        receiptNo:    p['Receipt No'],
+        customerName: p['Customer Full Name'],
+        bookingDate:  p['Booking Date'],
+        part:         'excess',
+        gross:        0,
+        alreadyPaid:  0,
+        netDue:       0,
+        dueDate:      null,
+        dueDateMs:    0,
+        dueDateStr:   '—',
+        allocated:    thisExcess,
+        isExcess:     true,
+      });
+    });
+  }
+
+  allocations = finalSlots;
+  renderPreview(finalSlots, totalAmt, mode);
   show('step3'); hide('step2');
 }
 
@@ -323,16 +383,29 @@ function renderPreview(slots, totalAmt, mode) {
   Object.values(byPlot).forEach(plot => {
     plot.slots.forEach(s => {
       const pctLabels = ['Part 1 (35%)','Part 2 (35%)','Part 3 (30%)'];
-      tableHTML += `<tr class="${s.allocated>0?'row-upcoming':''}">
-        <td><strong>Plot ${s.plotNo}</strong></td>
-        <td>${pctLabels[s.part-1]}</td>
-        <td>${s.dueDateStr}</td>
-        <td>₹${Utils.fmtNum(s.gross)}</td>
-        <td style="color:${s.alreadyPaid>0 ? '#2e7d32' : '#999'}">₹${Utils.fmtNum(s.alreadyPaid)}</td>
-        <td class="${s.netDue>0?'amt-due':'amt-ok'}">₹${Utils.fmtNum(s.netDue)}</td>
-        <td><input type="number" class="alloc-input" data-row="${rowIdx}" value="${s.allocated}" min="0"
-          style="width:120px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;"></td>
-      </tr>`;
+      if (s.isExcess) {
+        tableHTML += `<tr style="background:#fff8e1;">
+          <td><strong>Plot ${s.plotNo}</strong></td>
+          <td><span style="background:#ff6f00;color:#fff;font-size:.72rem;padding:2px 8px;border-radius:10px;font-weight:700;">EXCESS</span></td>
+          <td>—</td>
+          <td>—</td>
+          <td>—</td>
+          <td style="color:#e65100;font-weight:700;">Extra payment</td>
+          <td><input type="number" class="alloc-input" data-row="${rowIdx}" value="${s.allocated}" min="0"
+            style="width:120px;padding:5px 8px;border:1.5px solid #ffcc02;border-radius:6px;font-size:.85rem;background:#fffde7;"></td>
+        </tr>`;
+      } else {
+        tableHTML += `<tr class="${s.allocated>0?'row-upcoming':''}">
+          <td><strong>Plot ${s.plotNo}</strong></td>
+          <td>${pctLabels[s.part-1]}</td>
+          <td>${s.dueDateStr}</td>
+          <td>₹${Utils.fmtNum(s.gross)}</td>
+          <td style="color:${s.alreadyPaid>0 ? '#2e7d32' : '#999'}">₹${Utils.fmtNum(s.alreadyPaid)}</td>
+          <td class="${s.netDue>0?'amt-due':'amt-ok'}">₹${Utils.fmtNum(s.netDue)}</td>
+          <td><input type="number" class="alloc-input" data-row="${rowIdx}" value="${s.allocated}" min="0"
+            style="width:120px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;"></td>
+        </tr>`;
+      }
       rowIdx++;
     });
   });
