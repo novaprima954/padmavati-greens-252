@@ -765,9 +765,12 @@ async function loadReceipts() {
     const maxR = Math.max(...rows.map(r => r.receiptNo));
     const range = maxR - minR + 1;
 
-    // Build map for quick lookup
+    // Build map: receiptNo → array of rows (multiple plots per receipt)
     const issued = new Map();
-    rows.forEach(r => issued.set(r.receiptNo, r));
+    rows.forEach(r => {
+      if (!issued.has(r.receiptNo)) issued.set(r.receiptNo, []);
+      issued.get(r.receiptNo).push(r);
+    });
 
     // Build full sequence including gaps
     const allNums = [];
@@ -806,22 +809,29 @@ async function loadReceipts() {
 
     allNums.forEach(n => {
       if (issued.has(n)) {
-        const r = issued.get(n);
-        const isCancelled = r.status !== 'Active';
-        const style = isCancelled
-          ? 'background:#f5f5f5;color:#999;text-decoration:line-through;'
-          : '';
-        tbl += `<tr style="${style}">
-          <td><strong>${r.receiptNo}</strong></td>
-          <td><span class="status-badge" style="background:${isCancelled?'#eee':'#e8f5e9'};color:${isCancelled?'#999':'#2e7d32'}">${r.status}</span></td>
-          <td>${r.date||'—'}</td>
-          <td>${r.amount?'₹'+Utils.fmtNum(r.amount):'—'}</td>
-          <td>${r.mode||'—'}</td>
-          <td>${r.customer||'—'}</td>
-          <td>${r.plot||'—'}</td>
-          <td style="font-size:.78rem;color:var(--grey)">${r.bookingReceipt||'—'}</td>
-          <td style="font-size:.78rem;color:var(--grey)">${r.notes||'—'}</td>
-        </tr>`;
+        const entries = issued.get(n);
+        const totalRowAmt = entries.reduce((s,r) => s + r.amount, 0);
+        entries.forEach((r, idx) => {
+          const isCancelled = r.status !== 'Active';
+          const isFirst = idx === 0;
+          const isLast  = idx === entries.length - 1;
+          const multiStyle = entries.length > 1
+            ? (isFirst ? 'border-bottom:none;' : isLast ? 'border-top:1px dashed #e0e0e0;' : 'border-top:1px dashed #e0e0e0;border-bottom:none;')
+            : '';
+          const rowStyle = (isCancelled ? 'background:#f5f5f5;color:#999;text-decoration:line-through;' : '') + multiStyle;
+
+          tbl += `<tr style="${rowStyle}">
+            ${isFirst ? `<td rowspan="${entries.length}" style="vertical-align:middle;font-weight:700;${entries.length>1?'background:#f0f4f8;':''}">${r.receiptNo}${entries.length>1?`<br><span style="font-size:.68rem;color:var(--grey);font-weight:400;text-decoration:none;">${entries.length} plots<br>₹${Utils.fmtNum(totalRowAmt)}</span>`:''}</td>` : ''}
+            <td><span class="status-badge" style="background:${isCancelled?'#eee':'#e8f5e9'};color:${isCancelled?'#999':'#2e7d32'}">${r.status}</span></td>
+            <td>${r.date||'—'}</td>
+            <td>${r.amount?'₹'+Utils.fmtNum(r.amount):'—'}</td>
+            <td>${r.mode||'—'}</td>
+            <td>${r.customer||'—'}</td>
+            <td><strong>${r.plot||'—'}</strong></td>
+            <td style="font-size:.78rem;color:var(--grey)">${r.bookingReceipt||'—'}</td>
+            <td style="font-size:.78rem;color:var(--grey)">${r.notes||'—'}</td>
+          </tr>`;
+        });
       } else {
         // Gap row
         tbl += `<tr style="background:#fff3f3;">
