@@ -1289,8 +1289,8 @@ function renderDeed(rows, filter) {
         <th>Booking Date</th>
         <th>BR Amount</th>
         <th>BR Paid</th>
-        <th>RR Inst 1</th>
-        <th>RR Paid</th>
+        <th>BR Inst 1 (35%)</th>
+        <th>BR Paid</th>
         <th>Agreement</th>
         <th>Sale Deed</th>
         <th>Actions</th>
@@ -1353,9 +1353,9 @@ function renderDeed(rows, filter) {
         ${r.paidBR>=r.brAmt?'<div style="font-size:.68rem;color:var(--forest);">✅ Full</div>':''}
       </td>
       <td style="font-size:.82rem;">₹${Utils.fmtNum(r.rrInst1)}</td>
-      <td style="color:${r.paidRR>=r.rrInst1?'var(--forest)':'var(--ink)'};">
-        <strong>₹${Utils.fmtNum(r.paidRR)}</strong>
-        ${r.paidRR>=r.rrInst1?'<div style="font-size:.68rem;color:var(--forest);">✅ Inst 1</div>':'<div style="font-size:.68rem;color:var(--grey);">${rrI1Pct}%</div>'}
+      <td style="color:${r.agEligible?'var(--forest)':'var(--ink)'};">
+        <strong>₹${Utils.fmtNum(r.paidBR)}</strong>
+        ${r.agEligible?'<div style="font-size:.68rem;color:var(--forest);">✅ Eligible</div>':'<div style="font-size:.68rem;color:var(--grey);">${Math.round(r.paidBR/r.rrInst1*100)}%</div>'}
       </td>
       <td>${agChip}</td>
       <td>${sdChip}</td>
