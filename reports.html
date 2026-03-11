@@ -51,6 +51,10 @@
       <div class="rc-name">Receipt Number Audit</div>
       <div class="rc-desc">Cash and Bank receipt series — all issued receipts, missing gaps, and cancelled/voided numbers</div>
     </div>
+    <div class="report-card" data-report="deed">
+      <div class="rc-icon">📜</div>
+      <div class="rc-name">Sale Deed Eligible</div>
+    </div>
     <div class="report-card" data-report="customers">
       <div class="rc-icon">👥</div>
       <div class="rc-name">Customer Summary</div>
@@ -211,6 +215,22 @@
     </div>
 
     <!-- Report output -->
+    <!-- Sale Deed controls -->
+    <div id="deedControls" class="report-controls" style="display:none;">
+      <div class="rc-filter-row">
+        <div class="filter-group">
+          <label>Show</label>
+          <select id="deedFilter" class="select-filter">
+            <option value="eligible">Eligible (Not Done)</option>
+            <option value="inprogress">Agreement Done — Deed Pending</option>
+            <option value="completed">Sale Deed Completed</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <button class="btn-report-search" id="deedLoadBtn">Load Report</button>
+      </div>
+    </div>
+
     <!-- Customer Summary controls -->
     <div id="customersControls" class="report-controls" style="display:none;">
       <div class="rc-filter-row">
@@ -250,5 +270,48 @@
 <script src="js/utils.js"></script>
 <script src="js/header.js"></script>
 <script src="js/app/reports.js"></script>
+
+  <!-- Agreement modal -->
+  <div class="overlay" id="agModal">
+    <div class="overlay-card" style="max-width:440px;">
+      <div class="overlay-title" id="agModalTitle">✍ Mark Agreement Done</div>
+      <div id="agModalMeta" style="font-size:.82rem;color:var(--grey);margin-bottom:14px;"></div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Agreement Number <span class="req">*</span></label>
+        <input type="text" id="agNumber" class="form-input" placeholder="e.g. AGR-2024-001">
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Agreement Date <span class="req">*</span></label>
+        <input type="date" id="agDate" class="form-input">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-submit" id="agSaveBtn">Save</button>
+        <button class="btn-back" onclick="Utils.closeOverlay('agModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sale Deed modal -->
+  <div class="overlay" id="sdModal">
+    <div class="overlay-card" style="max-width:440px;">
+      <div class="overlay-title" id="sdModalTitle">📜 Mark Sale Deed Done</div>
+      <div id="sdModalMeta" style="font-size:.82rem;color:var(--grey);margin-bottom:14px;"></div>
+      <div style="background:#fff8e1;border:1px solid #ffcc02;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;">
+        <strong>Note:</strong> If this customer has multiple plots, you can enter the same deed number for all or different numbers per plot.
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Sale Deed Number <span class="req">*</span></label>
+        <input type="text" id="sdNumber" class="form-input" placeholder="e.g. SD-2024-001">
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Sale Deed Date <span class="req">*</span></label>
+        <input type="date" id="sdDate" class="form-input">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-submit" id="sdSaveBtn">Save</button>
+        <button class="btn-back" onclick="Utils.closeOverlay('sdModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('receiptsLoadBtn').addEventListener('click', () => loadReceipts());
   document.getElementById('ratecompLoadBtn').addEventListener('click', () => loadRateComp());
   document.getElementById('custLoadBtn').addEventListener('click', () => loadCustomers());
+  document.getElementById('deedLoadBtn').addEventListener('click', () => loadDeed());
+  document.getElementById('deedFilter').addEventListener('change', () => loadDeed());
   document.getElementById('custExportBtn').addEventListener('click', () => exportCustomersExcel());
   document.getElementById('custSort').addEventListener('change', renderCustomers);
   document.getElementById('custSplit').addEventListener('change', renderCustomers);
@@ -66,6 +68,7 @@ function openReport(report) {
   document.getElementById('receiptsControls').style.display  = 'none';
   document.getElementById('ratecompControls').style.display  = 'none';
   document.getElementById('customersControls').style.display = 'none';
+  document.getElementById('deedControls').style.display      = 'none';
   document.getElementById('custExportBtn').style.display     = 'none';
 
   const titles = {
@@ -77,6 +80,7 @@ function openReport(report) {
     receipts:  ['Receipt Number Audit', 'Cash and Bank series — gaps, cancelled and active receipts'],
     ratecomp:   ['Rate Comparison', 'Zone rate vs booked rate — discount, premium and revenue impact per plot'],
     customers:  ['Customer Summary', 'All active customers — payments received, total amount and outstanding due'],
+    deed:       ['Sale Deed Eligible', 'Agreement and sale deed tracker — eligibility, status and action'],
   };
   document.getElementById('reportViewTitle').textContent = titles[report][0];
   document.getElementById('reportViewSub').textContent   = titles[report][1];
@@ -104,6 +108,9 @@ function openReport(report) {
   } else if (report==='customers') {
     document.getElementById('customersControls').style.display = 'block';
     loadCustomers();
+  } else if (report==='deed') {
+    document.getElementById('deedControls').style.display = 'block';
+    loadDeed();
   }
 }
 
@@ -1218,4 +1225,246 @@ function exportCustomersExcel() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   Utils.toast('Excel file downloaded', 'ok');
+}
+
+// ── SALE DEED ELIGIBLE REPORT ─────────────────────
+let _deedPending = null; // { receiptNo, type, customerName, plotNo }
+
+async function loadDeed() {
+  const btn    = document.getElementById('deedLoadBtn');
+  const out    = document.getElementById('reportOutput');
+  const filter = document.getElementById('deedFilter').value;
+  btn.disabled = true; btn.textContent = 'Loading…';
+  out.innerHTML = '<div class="loading-state">Loading…</div>';
+
+  try {
+    const res = await API.get({ action: 'getReportDeedEligible', filter });
+    if (res.error) throw new Error(res.error);
+    renderDeed(res.rows, filter);
+  } catch(e) {
+    out.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Load Report';
+  }
+}
+
+function renderDeed(rows, filter) {
+  const out = document.getElementById('reportOutput');
+  if (!rows.length) {
+    out.innerHTML = '<div class="empty-state"><p>No records found for the selected filter.</p></div>';
+    return;
+  }
+
+  // Summary counts
+  const agElig  = rows.filter(r => r.agEligible && !r.agDone).length;
+  const agDone  = rows.filter(r => r.agDone).length;
+  const sdElig  = rows.filter(r => r.sdEligible && !r.sdDone).length;
+  const sdDone  = rows.filter(r => r.sdDone).length;
+
+  let html = `
+    <div class="deed-summary-strip">
+      <div class="deed-sum-card" style="border-color:#1565c0;">
+        <span>Agreement Eligible</span><strong style="color:#1565c0;">${agElig}</strong>
+      </div>
+      <div class="deed-sum-card" style="border-color:var(--forest);">
+        <span>Agreement Done</span><strong style="color:var(--forest);">${agDone}</strong>
+      </div>
+      <div class="deed-sum-card" style="border-color:#e65100;">
+        <span>Deed Eligible</span><strong style="color:#e65100;">${sdElig}</strong>
+      </div>
+      <div class="deed-sum-card" style="border-color:#6a1b9a;">
+        <span>Deed Completed</span><strong style="color:#6a1b9a;">${sdDone}</strong>
+      </div>
+      <div class="deed-sum-card">
+        <span>Total Rows</span><strong>${rows.length}</strong>
+      </div>
+    </div>
+
+    <table class="data-table" id="deedTable">
+      <thead><tr>
+        <th>#</th>
+        <th>Customer</th>
+        <th>Plot</th>
+        <th>Mobile</th>
+        <th>Booking Date</th>
+        <th>BR Amount</th>
+        <th>BR Paid</th>
+        <th>RR Inst 1</th>
+        <th>RR Paid</th>
+        <th>Agreement</th>
+        <th>Sale Deed</th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody>`;
+
+  rows.forEach((r, idx) => {
+    const brPct     = r.brAmt > 0 ? Math.round(r.paidBR / r.brAmt * 100) : 0;
+    const rrI1Pct   = r.rrInst1 > 0 ? Math.round(r.paidRR / r.rrInst1 * 100) : 0;
+
+    // Agreement status chip
+    const agChip = r.agDone
+      ? `<div class="deed-chip deed-chip-done">✅ Done<br><span>${r.agNumber||'—'}</span><br><span>${r.agDate||'—'}</span></div>`
+      : r.agEligible
+        ? `<div class="deed-chip deed-chip-eligible">🟡 Eligible</div>`
+        : `<div class="deed-chip deed-chip-none">⏳ Not yet</div>`;
+
+    // Sale deed status chip
+    const sdChip = r.sdDone
+      ? `<div class="deed-chip deed-chip-done" style="border-color:#6a1b9a;background:#f3e5f5;">✅ Done<br><span>${r.sdNumber||'—'}</span><br><span>${r.sdDate||'—'}</span></div>`
+      : r.sdEligible
+        ? `<div class="deed-chip deed-chip-eligible" style="border-color:#e65100;background:#fff3e0;color:#e65100;">🟠 Eligible</div>`
+        : `<div class="deed-chip deed-chip-none">⏳ Not yet</div>`;
+
+    // Actions
+    let actions = '';
+    if (!r.agDone && r.agEligible) {
+      actions += `<button class="btn-inline-sm btn-recon" style="margin-bottom:4px;" onclick="openAgModal('${r.receiptNo}','${r.customerName.replace(/'/g,"\\'")}','${r.plotNo}')">✍ Agreement</button><br>`;
+    }
+    if (r.agDone) {
+      actions += `<button class="btn-inline-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;margin-bottom:4px;" onclick="undoDeed('${r.receiptNo}','agreement','${r.customerName.replace(/'/g,"\\'")}','${r.plotNo}')">↩ Undo Ag.</button><br>`;
+    }
+    if (!r.sdDone && r.sdEligible) {
+      actions += `<button class="btn-inline-sm" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8;margin-bottom:4px;" onclick="openSdModal('${r.receiptNo}','${r.customerName.replace(/'/g,"\\'")}','${r.plotNo}')">📜 Sale Deed</button><br>`;
+    }
+    if (r.sdDone) {
+      actions += `<button class="btn-inline-sm" style="background:#fce4ec;color:#880e4f;border:1px solid #f48fb1;" onclick="undoDeed('${r.receiptNo}','saledeed','${r.customerName.replace(/'/g,"\\'")}','${r.plotNo}')">↩ Undo Deed</button>`;
+    }
+    if (!actions) actions = '<span style="font-size:.75rem;color:var(--grey);">—</span>';
+
+    // Row highlight
+    const rowBg = r.sdDone ? 'background:#f8f0ff;' : r.agDone ? 'background:#f0fff4;' : '';
+
+    html += `<tr style="${rowBg}">
+      <td style="color:var(--grey);font-size:.78rem;">${idx+1}</td>
+      <td>
+        <strong>${r.customerName}</strong>
+        <div style="font-size:.72rem;color:var(--grey);">${r.receiptNo}</div>
+      </td>
+      <td><strong>Plot ${r.plotNo}</strong></td>
+      <td style="font-size:.82rem;">${r.phone||'—'}</td>
+      <td style="font-size:.82rem;">${r.bookingDate||'—'}</td>
+      <td>
+        ₹${Utils.fmtNum(r.brAmt)}
+        <div class="deed-progress-bar"><div style="width:${Math.min(brPct,100)}%;background:${brPct>=100?'var(--forest)':'#1565c0'};"></div></div>
+        <div style="font-size:.68rem;color:var(--grey);">${brPct}% paid</div>
+      </td>
+      <td style="color:${r.paidBR>=r.brAmt?'var(--forest)':'var(--ink)'};">
+        <strong>₹${Utils.fmtNum(r.paidBR)}</strong>
+        ${r.paidBR>=r.brAmt?'<div style="font-size:.68rem;color:var(--forest);">✅ Full</div>':''}
+      </td>
+      <td style="font-size:.82rem;">₹${Utils.fmtNum(r.rrInst1)}</td>
+      <td style="color:${r.paidRR>=r.rrInst1?'var(--forest)':'var(--ink)'};">
+        <strong>₹${Utils.fmtNum(r.paidRR)}</strong>
+        ${r.paidRR>=r.rrInst1?'<div style="font-size:.68rem;color:var(--forest);">✅ Inst 1</div>':'<div style="font-size:.68rem;color:var(--grey);">${rrI1Pct}%</div>'}
+      </td>
+      <td>${agChip}</td>
+      <td>${sdChip}</td>
+      <td style="white-space:nowrap;">${actions}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  out.innerHTML = html;
+
+  // Wire up modal save buttons
+  document.getElementById('agSaveBtn').onclick = saveAgreement;
+  document.getElementById('sdSaveBtn').onclick  = saveSaleDeed;
+}
+
+// ── MODALS ────────────────────────────────────────
+function openAgModal(receiptNo, customerName, plotNo) {
+  _deedPending = { receiptNo, customerName, plotNo };
+  document.getElementById('agModalTitle').textContent = `✍ Agreement — ${customerName} · Plot ${plotNo}`;
+  document.getElementById('agModalMeta').textContent  = `Receipt: ${receiptNo}`;
+  document.getElementById('agNumber').value = '';
+  document.getElementById('agDate').value   = '';
+  Utils.openOverlay('agModal');
+  setTimeout(() => document.getElementById('agNumber').focus(), 100);
+}
+
+function openSdModal(receiptNo, customerName, plotNo) {
+  _deedPending = { receiptNo, customerName, plotNo };
+  document.getElementById('sdModalTitle').textContent = `📜 Sale Deed — ${customerName} · Plot ${plotNo}`;
+  document.getElementById('sdModalMeta').textContent  = `Receipt: ${receiptNo}`;
+  document.getElementById('sdNumber').value = '';
+  document.getElementById('sdDate').value   = '';
+  Utils.openOverlay('sdModal');
+  setTimeout(() => document.getElementById('sdNumber').focus(), 100);
+}
+
+async function saveAgreement() {
+  const number = document.getElementById('agNumber').value.trim();
+  const date   = document.getElementById('agDate').value;
+  if (!number) { Utils.toast('Agreement number required', 'err'); return; }
+  if (!date)   { Utils.toast('Agreement date required', 'err'); return; }
+
+  const btn = document.getElementById('agSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    const dp = date.split('-');
+    const fmtDate = dp.length === 3 ? `${dp[2]}/${dp[1]}/${dp[0]}` : date;
+    const res = await API.post({
+      action: 'saveDeedStatus',
+      receiptNo: _deedPending.receiptNo,
+      type: 'agreement',
+      number,
+      date: fmtDate,
+    });
+    if (res.error) throw new Error(res.error);
+    Utils.closeOverlay('agModal');
+    Utils.toast('✅ Agreement marked done', 'ok');
+    loadDeed();
+  } catch(e) {
+    Utils.toast(e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+async function saveSaleDeed() {
+  const number = document.getElementById('sdNumber').value.trim();
+  const date   = document.getElementById('sdDate').value;
+  if (!number) { Utils.toast('Sale deed number required', 'err'); return; }
+  if (!date)   { Utils.toast('Sale deed date required', 'err'); return; }
+
+  const btn = document.getElementById('sdSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    const dp = date.split('-');
+    const fmtDate = dp.length === 3 ? `${dp[2]}/${dp[1]}/${dp[0]}` : date;
+    const res = await API.post({
+      action: 'saveDeedStatus',
+      receiptNo: _deedPending.receiptNo,
+      type: 'saledeed',
+      number,
+      date: fmtDate,
+    });
+    if (res.error) throw new Error(res.error);
+    Utils.closeOverlay('sdModal');
+    Utils.toast('✅ Sale Deed marked done', 'ok');
+    loadDeed();
+  } catch(e) {
+    Utils.toast(e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+
+async function undoDeed(receiptNo, type, customerName, plotNo) {
+  const label = type === 'agreement' ? 'Agreement' : 'Sale Deed';
+  if (!confirm(`Undo ${label} for ${customerName} · Plot ${plotNo}?`)) return;
+  try {
+    const res = await API.post({
+      action: 'saveDeedStatus',
+      receiptNo,
+      type: type === 'agreement' ? 'agreement_undo' : 'saledeed_undo',
+    });
+    if (res.error) throw new Error(res.error);
+    Utils.toast(`↩ ${label} undone`, 'ok');
+    loadDeed();
+  } catch(e) {
+    Utils.toast(e.message, 'err');
+  }
 }

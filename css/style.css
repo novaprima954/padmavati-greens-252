@@ -2190,3 +2190,75 @@ header {
   border-top: 1.5px dashed #ce93d8;
   font-size: .78rem;
 }
+
+/* ── Sale Deed Report ────────────────────────────── */
+.deed-summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.deed-sum-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 18px;
+  background: var(--mist);
+  border-radius: var(--r);
+  border-left: 3px solid var(--sage);
+  min-width: 130px;
+}
+.deed-sum-card span {
+  font-size: .68rem;
+  color: var(--grey);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.deed-sum-card strong {
+  font-size: 1.1rem;
+  font-family: 'Cormorant Garamond', serif;
+}
+.deed-chip {
+  font-size: .74rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--sage);
+  background: var(--mist);
+  line-height: 1.5;
+  min-width: 80px;
+  text-align: center;
+}
+.deed-chip span {
+  font-size: .68rem;
+  color: var(--grey);
+  display: block;
+}
+.deed-chip-done {
+  background: #e8f5e9;
+  border-color: #a5d6a7;
+  color: #2e7d32;
+  font-weight: 700;
+}
+.deed-chip-eligible {
+  background: #e3f2fd;
+  border-color: #90caf9;
+  color: #1565c0;
+  font-weight: 600;
+}
+.deed-chip-none {
+  color: var(--grey);
+  background: #fafafa;
+  border-color: #e0e0e0;
+}
+.deed-progress-bar {
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  margin: 4px 0 2px;
+  overflow: hidden;
+}
+.deed-progress-bar div {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .3s;
+}
