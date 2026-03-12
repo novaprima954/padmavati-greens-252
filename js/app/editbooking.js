@@ -4,12 +4,8 @@ Auth.requireAuth();
 let currentBooking = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Admin only
   const sess = Auth.getSession();
-  if (!sess || sess.role !== 'admin') {
-    window.location.href = 'index.html';
-    return;
-  }
+  if (!sess || sess.role !== 'admin') { window.location.href = 'index.html'; return; }
 
   Header.init('editbooking');
   Utils.setupOverlays();
@@ -25,7 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function showSearch() {
   document.getElementById('searchPanel').style.display = 'block';
   document.getElementById('editPanel').style.display   = 'none';
-  document.getElementById('logPanel').style.display    = 'none';
   currentBooking = null;
 }
 
@@ -37,119 +32,163 @@ async function doSearch() {
   const btn = document.getElementById('searchBtn');
   btn.disabled = true; btn.textContent = 'Searching…';
   const out = document.getElementById('searchResult');
-  out.innerHTML = '';
+  out.innerHTML = '<div style="color:var(--grey);text-align:center;padding:20px;">Searching…</div>';
 
   try {
-    const res = await API.get({ action:'getBookingForEdit', query: q });
-    if (res.error) { out.innerHTML = `<div class="empty-state"><p>${res.error}</p></div>`; return; }
-
+    const res = await API.get({ action: 'getBookingForEdit', query: q });
+    if (res.error) {
+      out.innerHTML = `<div style="background:#ffebee;border-radius:10px;padding:16px;color:#b71c1c;text-align:center;">${res.error}</div>`;
+      return;
+    }
     if (res.mode === 'edit') {
+      out.innerHTML = '';
       loadEditForm(res.booking);
     } else {
-      // Multiple matches — show picker
-      out.innerHTML = `
-        <div class="ledger-pick-title">${res.bookings.length} bookings match — select one to edit:</div>
-        <table class="data-table" style="margin-top:10px;">
-          <thead><tr><th>Receipt No</th><th>Customer</th><th>Phone</th><th>Plot</th><th>Date</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            ${res.bookings.map(b => `
-              <tr>
-                <td>${b['Receipt No']||'—'}</td>
-                <td>${b['Customer Full Name']||'—'}</td>
-                <td>${b['Phone Number']||'—'}</td>
-                <td>Plot ${b['Plot No']||'—'}</td>
-                <td>${b['Booking Date']||'—'}</td>
-                <td><span class="status-badge" style="background:${b['Status']==='Cancelled'?'#ffcdd2':'#e8f5e9'};color:${b['Status']==='Cancelled'?'#b71c1c':'#2e7d32'}">${b['Status']||'Active'}</span></td>
-                <td><button class="btn-report-search" style="padding:4px 12px;font-size:.8rem;"
-                    onclick='loadEditForm(${JSON.stringify(b).replace(/'/g,"&apos;")})'>Edit</button></td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
+      renderPicker(res.bookings, out);
     }
   } catch(e) {
     Utils.toast(e.message, 'err');
+    out.innerHTML = '';
   } finally {
     btn.disabled = false; btn.textContent = 'Search';
   }
 }
 
+function renderPicker(bookings, out) {
+  out.innerHTML = `
+    <div style="font-size:.84rem;color:#78909c;margin-bottom:12px;">${bookings.length} bookings found — select one to edit:</div>
+    ${bookings.map(b => `
+      <div class="eb-pick-card" onclick='loadEditForm(${JSON.stringify(b).replace(/'/g,"&#39;")})'>
+        <div>
+          <div class="eb-pick-name">${b['Customer Full Name']||'—'}</div>
+          <div class="eb-pick-meta">Plot ${b['Plot No']||'—'} &nbsp;·&nbsp; ${b['Receipt No']||'—'} &nbsp;·&nbsp; ${b['Booking Date']||'—'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:.78rem;background:${b['Status']==='Cancelled'?'#ffcdd2':'#e8f5e9'};color:${b['Status']==='Cancelled'?'#b71c1c':'#2e7d32'};padding:2px 10px;border-radius:20px;font-weight:600;">${b['Status']||'Active'}</span>
+          <button class="eb-pick-btn">Edit →</button>
+        </div>
+      </div>`).join('')}`;
+}
+
 // ── LOAD FORM ─────────────────────────────────────
 function loadEditForm(booking) {
   currentBooking = booking;
+  const isCancelled = (booking['Status']||'') === 'Cancelled';
 
-  // Locked fields
-  document.getElementById('lPlotNo').textContent         = booking['Plot No']          || '—';
-  document.getElementById('lReceiptNo').textContent      = booking['Receipt Number 1'] || '—';
-  document.getElementById('lBookingReceipt').textContent = booking['Receipt No']       || '—';
-  document.getElementById('lStatus').textContent         = booking['Status']           || '—';
+  // Hero
+  document.getElementById('ebHeroName').textContent = booking['Customer Full Name'] || '—';
+  document.getElementById('ebHeroSub').textContent  = `Plot ${booking['Plot No']||'—'} · ${booking['Booking Date']||'—'} · ${booking['Area SqFt']||'—'} SqFt`;
 
-  // Locked if Cancelled
-  const isCancelled = (booking['Status'] || '') === 'Cancelled';
-  document.getElementById('saveBtn').style.display = isCancelled ? 'none' : 'inline-block';
-  if (isCancelled) {
-    document.getElementById('editSub').textContent = '⚠ This booking is cancelled and cannot be edited.';
-    document.getElementById('editSub').style.color = 'var(--red)';
-  } else {
-    document.getElementById('editSub').textContent = '';
-    document.getElementById('editSub').style.color = '';
-  }
+  const chips = [
+    { label: 'Receipt', val: booking['Receipt No']||'—' },
+    { label: 'Manual Rcpt', val: booking['Receipt Number 1']||'—' },
+    { label: 'Booked By', val: booking['Booked By Name']||'—' },
+  ];
+  document.getElementById('ebHeroChips').innerHTML = chips
+    .map(c => `<span class="eb-hero-chip">${c.label}: <strong>${c.val}</strong></span>`)
+    .join('');
 
-  document.getElementById('editTitle').textContent = `Edit Booking – ${booking['Customer Full Name'] || booking['Receipt No']}`;
+  const badge = document.getElementById('ebStatusBadge');
+  badge.textContent = booking['Status'] || 'Active';
+  badge.className = 'eb-status-badge' + (isCancelled ? ' cancelled' : '');
 
-  // Populate editable fields
-  document.getElementById('f-customerName').value  = booking['Customer Full Name'] || '';
-  document.getElementById('f-phone').value         = String(booking['Phone Number'] || '').replace(/\.0$/, '');
-  document.getElementById('f-aadhaar').value       = booking['Aadhaar Number']     || '';
-  document.getElementById('f-pan').value           = booking['PAN Number']         || '';
-  document.getElementById('f-address').value       = booking['Address']            || '';
-  document.getElementById('f-referredBy').value    = booking['Referred By']        || '';
-  document.getElementById('f-paymentRef').value    = booking['Payment Reference']  || '';
-  document.getElementById('f-remarks').value       = booking['Remarks']            || '';
-  document.getElementById('f-tokenAmount').value   = booking['Token Amount']       || 0;
+  document.getElementById('cancelledBanner').style.display = isCancelled ? 'block' : 'none';
+  document.getElementById('saveBtn').style.display         = isCancelled ? 'none'  : 'flex';
 
-  // Booking date — convert dd/mm/yyyy → yyyy-mm-dd for input[type=date]
-  const bdRaw = String(booking['Booking Date'] || '');
-  const bdParts = bdRaw.split('/');
-  if (bdParts.length === 3) {
-    document.getElementById('f-bookingDate').value = `${bdParts[2]}-${bdParts[1].padStart(2,'0')}-${bdParts[0].padStart(2,'0')}`;
-  } else {
-    document.getElementById('f-bookingDate').value = bdRaw;
-  }
+  // Customer fields
+  document.getElementById('f-customerName').value = booking['Customer Full Name'] || '';
+  document.getElementById('f-phone').value        = String(booking['Phone Number']||'').replace(/\.0$/,'');
+  document.getElementById('f-aadhaar').value      = booking['Aadhaar Number']    || '';
+  document.getElementById('f-address').value      = booking['Address']           || '';
+  document.getElementById('f-referredBy').value   = booking['Referred By']       || '';
+  document.getElementById('f-remarks').value      = booking['Remarks']           || '';
+
+  // Booking date — show as dd/mm/yyyy read-only
+  document.getElementById('f-bookingDate').value  = booking['Booking Date'] || '';
 
   // Payment mode
-  const modeEl = document.getElementById('f-paymentMode');
+  const modeEl  = document.getElementById('f-paymentMode');
   const modeVal = booking['Payment Mode'] || 'Cash';
   [...modeEl.options].forEach(o => { o.selected = o.value === modeVal; });
+
+  document.getElementById('f-paymentRef').value   = booking['Payment Reference'] || '';
+  document.getElementById('f-tokenAmount').value  = booking['Token Amount']      || 0;
 
   // Rates
   document.getElementById('f-br').value = booking['BR'] || '';
   document.getElementById('f-rr').value = booking['RR'] || '';
   document.getElementById('areaDisplay').textContent = booking['Area SqFt'] || '—';
+
+  // Recalc with paid amounts
   recalcAmounts();
 
-  // Disable fields if cancelled
-  document.querySelectorAll('#editForm input, #editForm select').forEach(el => {
+  // Last edited info
+  const lastBy = booking['Last Edited By'];
+  const lastAt = booking['Last Edited At'];
+  document.getElementById('lastEditInfo').textContent = lastBy
+    ? `Last edited by ${lastBy} on ${lastAt}`
+    : '';
+
+  // Disable all inputs if cancelled
+  document.querySelectorAll('#editPanel input, #editPanel select').forEach(el => {
+    if (el.id === 'searchQuery') return;
     el.disabled = isCancelled;
   });
+  // Booking date always readonly
+  document.getElementById('f-bookingDate').disabled = false;
 
-  // Show panels
+  // Show edit panel
   document.getElementById('searchPanel').style.display = 'none';
   document.getElementById('editPanel').style.display   = 'block';
 
-  // Load edit history
-  loadEditLog(booking['Receipt No']);
+  // Edit log
+  renderEditLog();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ── RECALC AMOUNTS ────────────────────────────────
 function recalcAmounts() {
+  if (!currentBooking) return;
   const br   = parseFloat(document.getElementById('f-br').value) || 0;
   const rr   = parseFloat(document.getElementById('f-rr').value) || 0;
-  const cr   = br - rr;
+  const cr   = Math.max(0, br - rr);
   const sqft = parseFloat(document.getElementById('areaDisplay').textContent) || 0;
-  document.getElementById('f-cr').value   = cr.toFixed(2);
-  document.getElementById('prev-br').textContent = '₹' + Utils.fmtNum(Math.round(br * sqft));
-  document.getElementById('prev-rr').textContent = '₹' + Utils.fmtNum(Math.round(rr * sqft));
-  document.getElementById('prev-cr').textContent = '₹' + Utils.fmtNum(Math.round(cr * sqft));
+
+  const brAmt = Math.round(br * sqft);
+  const rrAmt = Math.round(rr * sqft);
+  const crAmt = Math.round(cr * sqft);
+
+  // Paid amounts from booking data
+  const brPaid = Number(currentBooking['_brPaid']) || 0;
+  const rrPaid = Number(currentBooking['_rrPaid']) || 0;
+  const crPaid = Number(currentBooking['_crPaid']) || 0;
+
+  const brBal = brAmt - brPaid;
+  const rrBal = rrAmt - rrPaid;
+  const crBal = crAmt - crPaid;
+
+  document.getElementById('f-cr').value = cr.toFixed(2);
+
+  // Totals
+  document.getElementById('prev-br').textContent = '₹' + Utils.fmtNum(brAmt);
+  document.getElementById('prev-rr').textContent = '₹' + Utils.fmtNum(rrAmt);
+  document.getElementById('prev-cr').textContent = '₹' + Utils.fmtNum(crAmt);
+
+  // Paid
+  document.getElementById('prev-br-paid').textContent = '₹' + Utils.fmtNum(brPaid);
+  document.getElementById('prev-rr-paid').textContent = '₹' + Utils.fmtNum(rrPaid);
+  document.getElementById('prev-cr-paid').textContent = '₹' + Utils.fmtNum(crPaid);
+
+  // Balance — green if 0 or negative (excess), red if positive (due)
+  function setbal(id, wrapId, val) {
+    const el   = document.getElementById(id);
+    const wrap = document.getElementById(wrapId);
+    el.textContent = val < 0 ? '−₹' + Utils.fmtNum(Math.abs(val)) + ' excess' : '₹' + Utils.fmtNum(val);
+    wrap.className = 'eb-amt-line ' + (val <= 0 ? 'bal-ok' : 'bal');
+  }
+  setbal('prev-br-bal', 'prev-br-bal-wrap', brBal);
+  setbal('prev-rr-bal', 'prev-rr-bal-wrap', rrBal);
+  setbal('prev-cr-bal', 'prev-cr-bal-wrap', crBal);
 }
 
 // ── SAVE ──────────────────────────────────────────
@@ -160,22 +199,14 @@ async function saveEdit() {
   const phone = document.getElementById('f-phone').value.trim();
   const br    = parseFloat(document.getElementById('f-br').value);
   const rr    = parseFloat(document.getElementById('f-rr').value);
-  const bd    = document.getElementById('f-bookingDate').value;
 
-  if (!name)                          { Utils.toast('Customer name required', 'err'); return; }
-  if (!/^[0-9]{10}$/.test(phone))     { Utils.toast('Phone must be 10 digits', 'err'); return; }
-  if (isNaN(br) || br <= 0)           { Utils.toast('Valid BR rate required', 'err'); return; }
-  if (isNaN(rr) || rr < 0)            { Utils.toast('Valid RR rate required', 'err'); return; }
-  if (!bd)                            { Utils.toast('Booking date required', 'err'); return; }
-
-  // Convert date back to dd/mm/yyyy for backend
-  const bdParts = bd.split('-');
-  const bookingDate = bdParts.length === 3
-    ? `${bdParts[2]}/${bdParts[1]}/${bdParts[0]}`
-    : bd;
+  if (!name)                      { Utils.toast('Customer name required', 'err'); return; }
+  if (!/^[0-9]{10}$/.test(phone)) { Utils.toast('Phone must be 10 digits', 'err'); return; }
+  if (isNaN(br) || br <= 0)       { Utils.toast('Valid BR rate required', 'err'); return; }
+  if (isNaN(rr) || rr < 0)        { Utils.toast('Valid RR rate required', 'err'); return; }
 
   const btn = document.getElementById('saveBtn');
-  btn.disabled = true; btn.textContent = 'Saving…';
+  btn.disabled = true; btn.innerHTML = '<span>⏳</span> Saving…';
 
   try {
     const res = await API.post({
@@ -184,10 +215,9 @@ async function saveEdit() {
       customerName: name,
       phone,
       aadhaar:      document.getElementById('f-aadhaar').value.trim(),
-      pan:          document.getElementById('f-pan').value.trim(),
       address:      document.getElementById('f-address').value.trim(),
       referredBy:   document.getElementById('f-referredBy').value.trim(),
-      bookingDate,
+      bookingDate:  currentBooking['Booking Date'], // fixed — send original
       paymentMode:  document.getElementById('f-paymentMode').value,
       paymentRef:   document.getElementById('f-paymentRef').value.trim(),
       tokenAmount:  parseFloat(document.getElementById('f-tokenAmount').value) || 0,
@@ -196,54 +226,39 @@ async function saveEdit() {
     });
 
     if (res.error) throw new Error(res.error);
-
     Utils.toast('✅ Booking updated successfully', 'ok');
-    // Reload edit log and refresh form with saved data
-    loadEditLog(currentBooking['Receipt No']);
-    // Refresh booking data in form
-    setTimeout(() => {
-      const q = currentBooking['Receipt No'];
-      API.get({ action:'getBookingForEdit', query: q }).then(r => {
-        if (r.mode === 'edit') {
-          currentBooking = r.booking;
-          loadEditForm(r.booking);
-        }
-      });
-    }, 800);
+
+    // Refresh booking data
+    setTimeout(async () => {
+      const r = await API.get({ action:'getBookingForEdit', query: currentBooking['Receipt No'] });
+      if (r.mode === 'edit') { currentBooking = r.booking; loadEditForm(r.booking); }
+    }, 600);
 
   } catch(e) {
     Utils.toast(e.message, 'err');
   } finally {
-    btn.disabled = false; btn.textContent = '💾 Save Changes';
+    btn.disabled = false; btn.innerHTML = '<span>💾</span> Save Changes';
   }
 }
 
 // ── EDIT LOG ──────────────────────────────────────
-async function loadEditLog(receiptNo) {
-  // We re-use getBookingForEdit which doesn't return log
-  // Log is visible in the Edit Log sheet — show last edits via a simple read
-  // For now show a placeholder — full log is in Edit Log sheet in Google Sheets
-  const logPanel   = document.getElementById('logPanel');
-  const logContent = document.getElementById('logContent');
+function renderEditLog() {
+  const panel   = document.getElementById('logPanel');
+  const content = document.getElementById('logContent');
+  const b       = currentBooking;
+  const lastBy  = b['Last Edited By'];
+  const lastAt  = b['Last Edited At'];
 
-  // Show panel with note
-  logPanel.style.display = 'block';
-
-  // Check if Last Edited fields exist
-  const b = currentBooking;
-  const lastBy = b['Last Edited By'] || null;
-  const lastAt = b['Last Edited At'] || null;
+  panel.style.display = 'block';
 
   if (lastBy) {
-    logContent.innerHTML = `
-      <div style="font-size:.84rem;color:var(--grey);padding:8px 0;">
-        Last edited by <strong style="color:var(--ink)">${lastBy}</strong> on <strong style="color:var(--ink)">${lastAt}</strong>.
-        Full change history is available in the <strong>Edit Log</strong> sheet in Google Sheets.
+    content.innerHTML = `
+      <div class="eb-log-item">
+        <div class="eb-log-dot"></div>
+        <div>Last edited by <strong>${lastBy}</strong> on <strong>${lastAt}</strong>.
+        Full field-by-field history is in the <strong>Edit Log</strong> sheet in Google Sheets.</div>
       </div>`;
   } else {
-    logContent.innerHTML = `
-      <div style="font-size:.84rem;color:var(--grey);padding:8px 0;">
-        No edits recorded yet. Full change history will appear in the <strong>Edit Log</strong> sheet in Google Sheets after the first save.
-      </div>`;
+    content.innerHTML = `<div style="color:#90a4ae;font-size:.83rem;">No edits recorded yet. History will appear here after the first save.</div>`;
   }
 }

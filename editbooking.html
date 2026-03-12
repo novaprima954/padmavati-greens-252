@@ -4,162 +4,573 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Edit Booking – Padmavati Greens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Edit Booking redesign ── */
+    .eb-hero {
+      background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 60%, #388e3c 100%);
+      border-radius: 16px;
+      padding: 24px 28px;
+      color: #fff;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .eb-hero-left h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.7rem;
+      font-weight: 700;
+      margin: 0 0 4px;
+    }
+    .eb-hero-left p { font-size: .84rem; opacity: .8; margin: 0; }
+    .eb-hero-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .eb-hero-chip {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: .75rem;
+      backdrop-filter: blur(4px);
+    }
+    .eb-hero-chip strong { font-weight: 600; }
+    .eb-status-badge {
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 700;
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+    .eb-status-badge.cancelled { background: #ffcdd2; color: #b71c1c; }
+
+    /* Sections */
+    .eb-section {
+      background: #fff;
+      border: 1px solid #e8f0e9;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .eb-section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px;
+      background: linear-gradient(90deg, #f1f8f2, #fff);
+      border-bottom: 1px solid #e8f0e9;
+    }
+    .eb-section-head .eb-sec-icon {
+      width: 32px; height: 32px;
+      background: #e8f5e9;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .eb-section-head h3 {
+      font-size: .9rem;
+      font-weight: 700;
+      color: #1b5e20;
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .eb-section-body { padding: 20px; }
+
+    /* Form fields */
+    .eb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .eb-grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .eb-field { display: flex; flex-direction: column; gap: 5px; }
+    .eb-field label {
+      font-size: .72rem;
+      font-weight: 600;
+      color: #546e7a;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .eb-field label .req { color: #e53935; margin-left: 2px; }
+    .eb-input {
+      border: 1.5px solid #cfd8dc;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: .88rem;
+      font-family: 'Outfit', sans-serif;
+      color: #263238;
+      transition: border-color .2s, box-shadow .2s;
+      background: #fff;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .eb-input:focus {
+      outline: none;
+      border-color: #2e7d32;
+      box-shadow: 0 0 0 3px rgba(46,125,50,.1);
+    }
+    .eb-input:disabled {
+      background: #f5f7f5;
+      color: #90a4ae;
+      cursor: not-allowed;
+    }
+    .eb-input-readonly {
+      background: #f5f7f5;
+      border-color: #e0e0e0;
+      color: #546e7a;
+      cursor: default;
+    }
+
+    /* Rate + amount panel */
+    .eb-rate-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      border: 1.5px solid #e8f0e9;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .eb-rate-col {
+      padding: 16px 18px;
+      border-right: 1px solid #e8f0e9;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .eb-rate-col:last-child { border-right: none; }
+    .eb-rate-col-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .eb-rate-label {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .eb-rate-label.br { background: #e8eaf6; color: #283593; }
+    .eb-rate-label.rr { background: #e3f2fd; color: #1565c0; }
+    .eb-rate-label.cr { background: #fce4ec; color: #880e4f; }
+    .eb-rate-input {
+      border: 1.5px solid #cfd8dc;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: .92rem;
+      font-weight: 600;
+      width: 100%;
+      box-sizing: border-box;
+      font-family: 'Outfit', sans-serif;
+    }
+    .eb-rate-input:focus {
+      outline: none;
+      border-color: #2e7d32;
+      box-shadow: 0 0 0 3px rgba(46,125,50,.1);
+    }
+    .eb-rate-input.readonly {
+      background: #f5f7f5;
+      color: #546e7a;
+    }
+    .eb-amt-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .eb-amt-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .78rem;
+    }
+    .eb-amt-line span { color: #78909c; }
+    .eb-amt-line strong { font-size: .88rem; color: #263238; }
+    .eb-amt-line.paid strong { color: #2e7d32; }
+    .eb-amt-line.bal strong { color: #e53935; }
+    .eb-amt-line.bal-ok strong { color: #2e7d32; }
+    .eb-amt-divider { border: none; border-top: 1px dashed #e0e0e0; margin: 4px 0; }
+    .eb-area-note {
+      font-size: .75rem;
+      color: #78909c;
+      text-align: center;
+      padding: 2px 0 6px;
+    }
+
+    /* Token section */
+    .eb-token-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Actions bar */
+    .eb-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 18px 20px;
+      background: #f9fdf9;
+      border-top: 1px solid #e8f0e9;
+      flex-wrap: wrap;
+    }
+    .eb-btn-save {
+      background: linear-gradient(135deg, #2e7d32, #388e3c);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 28px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      transition: opacity .2s, transform .1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .eb-btn-save:hover { opacity: .9; }
+    .eb-btn-save:active { transform: scale(.98); }
+    .eb-btn-save:disabled { opacity: .5; cursor: not-allowed; }
+    .eb-btn-cancel {
+      background: #fff;
+      color: #546e7a;
+      border: 1.5px solid #cfd8dc;
+      border-radius: 10px;
+      padding: 10px 22px;
+      font-size: .88rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      transition: border-color .2s;
+    }
+    .eb-btn-cancel:hover { border-color: #90a4ae; }
+    .eb-last-edit {
+      margin-left: auto;
+      font-size: .76rem;
+      color: #90a4ae;
+    }
+
+    /* Search page */
+    .eb-search-wrap {
+      max-width: 600px;
+      margin: 40px auto;
+      text-align: center;
+    }
+    .eb-search-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem;
+      color: #1b5e20;
+      margin-bottom: 6px;
+    }
+    .eb-search-sub { color: #78909c; font-size: .88rem; margin-bottom: 28px; }
+    .eb-search-box {
+      display: flex;
+      gap: 10px;
+      background: #fff;
+      border: 2px solid #e8f0e9;
+      border-radius: 14px;
+      padding: 8px 8px 8px 18px;
+      transition: border-color .2s;
+    }
+    .eb-search-box:focus-within { border-color: #2e7d32; }
+    .eb-search-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: .92rem;
+      font-family: 'Outfit', sans-serif;
+      color: #263238;
+      background: transparent;
+    }
+    .eb-search-btn {
+      background: #2e7d32;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 22px;
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Pick list */
+    .eb-pick-card {
+      background: #fff;
+      border: 1.5px solid #e8f0e9;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .eb-pick-card:hover { border-color: #2e7d32; box-shadow: 0 2px 12px rgba(46,125,50,.1); }
+    .eb-pick-name { font-weight: 700; font-size: .95rem; color: #263238; }
+    .eb-pick-meta { font-size: .78rem; color: #78909c; margin-top: 2px; }
+    .eb-pick-btn {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #a5d6a7;
+      border-radius: 8px;
+      padding: 6px 16px;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* Log */
+    .eb-log-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f4f0;
+      font-size: .81rem;
+    }
+    .eb-log-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #a5d6a7;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    @media (max-width: 700px) {
+      .eb-rate-panel { grid-template-columns: 1fr; }
+      .eb-rate-col { border-right: none; border-bottom: 1px solid #e8f0e9; }
+      .eb-token-strip { grid-template-columns: 1fr; }
+      .eb-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
   <div id="headerMount"></div>
-
   <main class="page-wrap">
+
     <!-- Search panel -->
-    <div class="section-card" id="searchPanel">
-      <div class="section-title">✏️ Edit Booking</div>
-      <div class="section-sub">Search by booking receipt number, manual receipt number, or customer name</div>
-      <div class="report-search-wrap" style="margin-top:16px;">
-        <input type="text" id="searchQuery" class="report-input" placeholder="Receipt No / Manual Receipt / Customer Name…" style="max-width:420px;">
-        <button class="btn-submit" id="searchBtn">Search</button>
+    <div id="searchPanel">
+      <div class="eb-search-wrap">
+        <div class="eb-search-title">✏️ Edit Booking</div>
+        <div class="eb-search-sub">Search by booking receipt, manual receipt number, or customer name</div>
+        <div class="eb-search-box">
+          <input type="text" id="searchQuery" class="eb-search-input" placeholder="e.g. PG-001 or Ramesh Patil…">
+          <button class="eb-search-btn" id="searchBtn">Search</button>
+        </div>
+        <div id="searchResult" style="margin-top:20px;text-align:left;"></div>
       </div>
-      <div id="searchResult" style="margin-top:18px;"></div>
     </div>
 
-    <!-- Edit form (hidden until booking loaded) -->
-    <div class="section-card" id="editPanel" style="display:none;">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
-        <div>
-          <div class="section-title" id="editTitle">Edit Booking</div>
-          <div class="section-sub" id="editSub"></div>
-        </div>
-        <button class="btn-back" id="btnBackToSearch">← Back to Search</button>
-      </div>
+    <!-- Edit panel -->
+    <div id="editPanel" style="display:none;">
 
-      <!-- Locked info bar -->
-      <div class="edit-locked-bar" id="lockedBar">
-        <div class="edit-locked-item">
-          <span class="edit-locked-label">Plot No</span>
-          <span class="edit-locked-val" id="lPlotNo">—</span>
+      <!-- Hero bar -->
+      <div class="eb-hero" id="ebHero">
+        <div class="eb-hero-left">
+          <h2 id="ebHeroName">—</h2>
+          <p id="ebHeroSub">—</p>
+          <div class="eb-hero-chips" id="ebHeroChips"></div>
         </div>
-        <div class="edit-locked-item">
-          <span class="edit-locked-label">Manual Receipt No</span>
-          <span class="edit-locked-val" id="lReceiptNo">—</span>
-        </div>
-        <div class="edit-locked-item">
-          <span class="edit-locked-label">Booking Receipt</span>
-          <span class="edit-locked-val" id="lBookingReceipt">—</span>
-        </div>
-        <div class="edit-locked-item">
-          <span class="edit-locked-label">Status</span>
-          <span class="edit-locked-val" id="lStatus">—</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
+          <span class="eb-status-badge" id="ebStatusBadge">Active</span>
+          <button class="eb-btn-cancel" id="btnBackToSearch">← Back</button>
         </div>
       </div>
 
-      <form id="editForm" onsubmit="return false;">
+      <div id="cancelledBanner" style="display:none;background:#ffebee;border:1.5px solid #ef9a9a;border-radius:10px;padding:12px 18px;margin-bottom:16px;color:#b71c1c;font-weight:600;">
+        ⚠ This booking is cancelled and cannot be edited.
+      </div>
 
-        <!-- Section: Customer -->
-        <div class="edit-section-label">Customer Details</div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Customer Full Name <span class="req">*</span></label>
-            <input type="text" id="f-customerName" class="form-input" required>
-          </div>
-          <div class="form-group">
-            <label>Phone Number <span class="req">*</span></label>
-            <input type="tel" id="f-phone" class="form-input" maxlength="10" required>
-          </div>
-          <div class="form-group">
-            <label>Aadhaar Number</label>
-            <input type="text" id="f-aadhaar" class="form-input" maxlength="12">
-          </div>
-          <div class="form-group">
-            <label>PAN Number</label>
-            <input type="text" id="f-pan" class="form-input" maxlength="10">
-          </div>
-          <div class="form-group">
-            <label>Address</label>
-            <input type="text" id="f-address" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Referred By</label>
-            <input type="text" id="f-referredBy" class="form-input">
+      <!-- Customer details -->
+      <div class="eb-section">
+        <div class="eb-section-head">
+          <div class="eb-sec-icon">👤</div>
+          <h3>Customer Details</h3>
+        </div>
+        <div class="eb-section-body">
+          <div class="eb-grid">
+            <div class="eb-field">
+              <label>Customer Full Name <span class="req">*</span></label>
+              <input type="text" id="f-customerName" class="eb-input">
+            </div>
+            <div class="eb-field">
+              <label>Phone Number <span class="req">*</span></label>
+              <input type="tel" id="f-phone" class="eb-input" maxlength="10">
+            </div>
+            <div class="eb-field">
+              <label>Aadhaar Number</label>
+              <input type="text" id="f-aadhaar" class="eb-input" maxlength="12">
+            </div>
+            <div class="eb-field">
+              <label>Address</label>
+              <input type="text" id="f-address" class="eb-input">
+            </div>
+            <div class="eb-field">
+              <label>Referred By</label>
+              <input type="text" id="f-referredBy" class="eb-input">
+            </div>
+            <div class="eb-field">
+              <label>Remarks</label>
+              <input type="text" id="f-remarks" class="eb-input">
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Section: Booking -->
-        <div class="edit-section-label" style="margin-top:20px;">Booking Details</div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Booking Date <span class="req">*</span></label>
-            <input type="date" id="f-bookingDate" class="form-input" required>
+      <!-- Booking details -->
+      <div class="eb-section">
+        <div class="eb-section-head">
+          <div class="eb-sec-icon">📋</div>
+          <h3>Booking Details</h3>
+        </div>
+        <div class="eb-section-body">
+          <div class="eb-grid">
+            <div class="eb-field">
+              <label>Booking Date</label>
+              <input type="text" id="f-bookingDate" class="eb-input eb-input-readonly" readonly>
+            </div>
+            <div class="eb-field">
+              <label>Payment Mode <span class="req">*</span></label>
+              <select id="f-paymentMode" class="eb-input">
+                <option value="Cash">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="NEFT">NEFT</option>
+                <option value="RTGS">RTGS</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+            <div class="eb-field">
+              <label>Payment Reference</label>
+              <input type="text" id="f-paymentRef" class="eb-input">
+            </div>
           </div>
-          <div class="form-group">
-            <label>Payment Mode <span class="req">*</span></label>
-            <select id="f-paymentMode" class="form-input">
-              <option value="Cash">Cash</option>
-              <option value="UPI">UPI</option>
-              <option value="NEFT">NEFT</option>
-              <option value="RTGS">RTGS</option>
-              <option value="Cheque">Cheque</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Payment Reference</label>
-            <input type="text" id="f-paymentRef" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>Token Amount</label>
-            <input type="number" id="f-tokenAmount" class="form-input" min="0">
-          </div>
-          <div class="form-group">
-            <label>Remarks</label>
-            <input type="text" id="f-remarks" class="form-input">
+
+          <!-- Token amount -->
+          <div style="margin-top:18px;">
+            <div style="font-size:.72rem;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;">Token Payment</div>
+            <div class="eb-token-strip">
+              <div class="eb-field">
+                <label>Token Amount (₹)</label>
+                <input type="number" id="f-tokenAmount" class="eb-input" min="0">
+              </div>
+              <div class="eb-field">
+                <label>Token Mode</label>
+                <select id="f-paymentMode" class="eb-input" style="display:none;"></select>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Section: Rates -->
-        <div class="edit-section-label" style="margin-top:20px;">Rates & Amounts
-          <span style="font-size:.75rem;font-weight:400;color:var(--grey);margin-left:8px;">Area: <strong id="areaDisplay">—</strong> SqFt</span>
+      <!-- Rates & Amounts -->
+      <div class="eb-section">
+        <div class="eb-section-head">
+          <div class="eb-sec-icon">💰</div>
+          <h3>Rates &amp; Amounts</h3>
+          <span style="margin-left:auto;font-size:.78rem;color:#78909c;">Area: <strong id="areaDisplay" style="color:#2e7d32;">—</strong> SqFt</span>
         </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>BR Rate (₹/sqft) <span class="req">*</span></label>
-            <input type="number" id="f-br" class="form-input" min="0" step="0.01" oninput="recalcAmounts()">
+        <div class="eb-section-body">
+          <div class="eb-rate-panel">
+            <!-- BR -->
+            <div class="eb-rate-col">
+              <div class="eb-rate-col-head">
+                <span class="eb-rate-label br">BR</span>
+                <span style="font-size:.7rem;color:#78909c;">₹/sqft</span>
+              </div>
+              <input type="number" id="f-br" class="eb-rate-input" min="0" step="0.01" placeholder="Rate" oninput="recalcAmounts()">
+              <div class="eb-amt-row">
+                <div class="eb-amt-line">
+                  <span>Total</span>
+                  <strong id="prev-br">₹0</strong>
+                </div>
+                <hr class="eb-amt-divider">
+                <div class="eb-amt-line paid">
+                  <span>Paid</span>
+                  <strong id="prev-br-paid">₹0</strong>
+                </div>
+                <div class="eb-amt-line bal" id="prev-br-bal-wrap">
+                  <span>Balance</span>
+                  <strong id="prev-br-bal">₹0</strong>
+                </div>
+              </div>
+            </div>
+            <!-- RR -->
+            <div class="eb-rate-col">
+              <div class="eb-rate-col-head">
+                <span class="eb-rate-label rr">RR</span>
+                <span style="font-size:.7rem;color:#78909c;">₹/sqft</span>
+              </div>
+              <input type="number" id="f-rr" class="eb-rate-input" min="0" step="0.01" placeholder="Rate" oninput="recalcAmounts()">
+              <div class="eb-amt-row">
+                <div class="eb-amt-line">
+                  <span>Total</span>
+                  <strong id="prev-rr">₹0</strong>
+                </div>
+                <hr class="eb-amt-divider">
+                <div class="eb-amt-line paid">
+                  <span>Paid (RR)</span>
+                  <strong id="prev-rr-paid">₹0</strong>
+                </div>
+                <div class="eb-amt-line bal" id="prev-rr-bal-wrap">
+                  <span>Balance</span>
+                  <strong id="prev-rr-bal">₹0</strong>
+                </div>
+              </div>
+            </div>
+            <!-- CR -->
+            <div class="eb-rate-col">
+              <div class="eb-rate-col-head">
+                <span class="eb-rate-label cr">CR</span>
+                <span style="font-size:.7rem;color:#78909c;">= BR − RR</span>
+              </div>
+              <input type="number" id="f-cr" class="eb-rate-input readonly" readonly placeholder="Auto">
+              <div class="eb-amt-row">
+                <div class="eb-amt-line">
+                  <span>Total</span>
+                  <strong id="prev-cr">₹0</strong>
+                </div>
+                <hr class="eb-amt-divider">
+                <div class="eb-amt-line paid">
+                  <span>Paid (CR)</span>
+                  <strong id="prev-cr-paid">₹0</strong>
+                </div>
+                <div class="eb-amt-line bal" id="prev-cr-bal-wrap">
+                  <span>Balance</span>
+                  <strong id="prev-cr-bal">₹0</strong>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>RR Rate (₹/sqft) <span class="req">*</span></label>
-            <input type="number" id="f-rr" class="form-input" min="0" step="0.01" oninput="recalcAmounts()">
-          </div>
-          <div class="form-group">
-            <label>CR Rate (₹/sqft)</label>
-            <input type="number" id="f-cr" class="form-input" readonly style="background:var(--mist);">
-          </div>
+          <div class="eb-area-note">CR = BR − RR &nbsp;·&nbsp; Balance = Total − Paid (updates live as you change rates)</div>
         </div>
+      </div>
 
-        <!-- Amount preview -->
-        <div class="edit-amount-preview" id="amountPreview">
-          <div class="eap-item">
-            <span>BR Amount</span>
-            <strong id="prev-br">₹0</strong>
-          </div>
-          <div class="eap-item">
-            <span>RR Amount</span>
-            <strong id="prev-rr">₹0</strong>
-          </div>
-          <div class="eap-item">
-            <span>CR Amount</span>
-            <strong id="prev-cr">₹0</strong>
-          </div>
+      <!-- Actions -->
+      <div class="eb-section">
+        <div class="eb-actions">
+          <button class="eb-btn-save" id="saveBtn" onclick="saveEdit()">
+            <span>💾</span> Save Changes
+          </button>
+          <button class="eb-btn-cancel" id="btnCancelEdit">Cancel</button>
+          <div class="eb-last-edit" id="lastEditInfo"></div>
         </div>
+      </div>
 
-        <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap;">
-          <button class="btn-submit" id="saveBtn" onclick="saveEdit()">💾 Save Changes</button>
-          <button class="btn-back" id="btnCancelEdit">Cancel</button>
+      <!-- Edit log -->
+      <div class="eb-section" id="logPanel" style="display:none;">
+        <div class="eb-section-head">
+          <div class="eb-sec-icon">📋</div>
+          <h3>Edit History</h3>
         </div>
-      </form>
-    </div>
+        <div class="eb-section-body" id="logContent"></div>
+      </div>
 
-    <!-- Edit Log panel -->
-    <div class="section-card" id="logPanel" style="display:none;margin-top:16px;">
-      <div class="section-title" style="font-size:.95rem;">📋 Edit History</div>
-      <div id="logContent"></div>
-    </div>
+    </div><!-- /editPanel -->
   </main>
 
   <script src="js/config.js"></script>
