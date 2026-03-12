@@ -958,7 +958,7 @@ function renderRateComp(res) {
         <th>Zone Total</th>
         <th>Booked Total</th>
         <th>Revenue Impact</th>
-        <th>Booked By</th>
+        <th>Customer</th>
         <th>Date</th>
       </tr></thead>
       <tbody>`;
@@ -988,7 +988,10 @@ function renderRateComp(res) {
       <td>₹${Utils.fmtNum(r.zoneAmt)}</td>
       <td>₹${Utils.fmtNum(r.bookedAmt)}</td>
       <td style="color:${impColor};font-weight:600;">${impSign}₹${Utils.fmtNum(Math.abs(r.revenueImpact))}</td>
-      <td style="font-size:.82rem;">${r.bookedBy||'—'}</td>
+      <td>
+          <strong>${r.customerName||'—'}</strong>
+          ${r.phone ? '<div style="font-size:.72rem;color:var(--grey);">'+r.phone+'</div>' : ''}
+        </td>
       <td style="font-size:.82rem;">${r.bookingDate||'—'}</td>
     </tr>`;
   });
@@ -1315,18 +1318,19 @@ function renderDeed(rows, filter) {
         ? `<div class="deed-chip deed-chip-eligible" style="border-color:#e65100;background:#fff3e0;color:#e65100;">🟠 Eligible</div>`
         : `<div class="deed-chip deed-chip-none">⏳ Not yet</div>`;
 
-    // Actions
+    // Actions — admin only
+    const isAdmin = (Auth.getSession()||{}).role === 'admin';
     let actions = '';
-    if (!r.agDone && r.agEligible) {
+    if (isAdmin && !r.agDone && r.agEligible) {
       actions += `<button class="btn-inline-sm btn-recon" style="margin-bottom:4px;" onclick="openAgModal('${r.receiptNo}','${r.customerName.replace(/'/g,"\\'")}','${r.plotNo}')">✍ Agreement</button><br>`;
     }
-    if (r.agDone) {
+    if (isAdmin && r.agDone) {
       actions += `<button class="btn-inline-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;margin-bottom:4px;" onclick="undoDeed('${r.receiptNo}','agreement','${r.customerName.replace(/'/g,"\\'")}','${r.plotNo}')">↩ Undo Ag.</button><br>`;
     }
-    if (!r.sdDone && r.sdEligible) {
+    if (isAdmin && !r.sdDone && r.sdEligible) {
       actions += `<button class="btn-inline-sm" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8;margin-bottom:4px;" onclick="openSdModal('${r.receiptNo}','${r.customerName.replace(/'/g,"\\'")}','${r.plotNo}')">📜 Sale Deed</button><br>`;
     }
-    if (r.sdDone) {
+    if (isAdmin && r.sdDone) {
       actions += `<button class="btn-inline-sm" style="background:#fce4ec;color:#880e4f;border:1px solid #f48fb1;" onclick="undoDeed('${r.receiptNo}','saledeed','${r.customerName.replace(/'/g,"\\'")}','${r.plotNo}')">↩ Undo Deed</button>`;
     }
     if (!actions) actions = '<span style="font-size:.75rem;color:var(--grey);">—</span>';
