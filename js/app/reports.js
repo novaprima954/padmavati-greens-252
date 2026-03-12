@@ -1289,8 +1289,8 @@ function renderDeed(rows, filter) {
         <th>Booking Date</th>
         <th>BR Amount</th>
         <th>BR Paid</th>
+        <th>Difference</th>
         <th>BR Inst 1 (35%)</th>
-        <th>BR Paid</th>
         <th>Agreement</th>
         <th>Sale Deed</th>
         <th>Actions</th>
@@ -1345,18 +1345,20 @@ function renderDeed(rows, filter) {
       <td style="font-size:.82rem;">${r.bookingDate||'—'}</td>
       <td>
         ₹${Utils.fmtNum(r.brAmt)}
-        <div class="deed-progress-bar"><div style="width:${Math.min(brPct,100)}%;background:${brPct>=100?'var(--forest)':'#1565c0'};"></div></div>
+        <div class="deed-progress-bar"><div style="width:${Math.min(brPct,100)}%;background:${brPct>=100?'var(--forest)':brPct>=99?'#f57f17':'#1565c0'};"></div></div>
         <div style="font-size:.68rem;color:var(--grey);">${brPct}% paid</div>
       </td>
-      <td style="color:${r.paidBR>=r.brAmt?'var(--forest)':'var(--ink)'};">
+      <td style="color:${brPct>=99?'var(--forest)':'var(--ink)'};">
         <strong>₹${Utils.fmtNum(r.paidBR)}</strong>
-        ${r.paidBR>=r.brAmt?'<div style="font-size:.68rem;color:var(--forest);">✅ Full</div>':''}
+        ${brPct>=100?'<div style="font-size:.68rem;color:var(--forest);">✅ Full</div>':brPct>=99?'<div style="font-size:.68rem;color:#f57f17;">≥99%</div>':''}
       </td>
+      <td>${(() => {
+        const diff = r.brDiff;
+        if (diff > 0)  return '<span style="color:#e53935;font-weight:700;">−₹' + Utils.fmtNum(diff) + '</span><div style="font-size:.68rem;color:#e53935;">Due</div>';
+        if (diff < 0)  return '<span style="color:#6a1b9a;font-weight:700;">+₹' + Utils.fmtNum(Math.abs(diff)) + '</span><div style="font-size:.68rem;color:#6a1b9a;">Excess</div>';
+        return '<span style="color:var(--forest);font-weight:700;">✅ Settled</span>';
+      })()}</td>
       <td style="font-size:.82rem;">₹${Utils.fmtNum(r.rrInst1)}</td>
-      <td style="color:${r.agEligible?'var(--forest)':'var(--ink)'};">
-        <strong>₹${Utils.fmtNum(r.paidBR)}</strong>
-        ${r.agEligible?'<div style="font-size:.68rem;color:var(--forest);">✅ Eligible</div>':'<div style="font-size:.68rem;color:var(--grey);">${Math.round(r.paidBR/r.rrInst1*100)}%</div>'}
-      </td>
       <td>${agChip}</td>
       <td>${sdChip}</td>
       <td style="white-space:nowrap;">${actions}</td>
