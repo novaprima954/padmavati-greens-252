@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('custLoadBtn').addEventListener('click', () => loadCustomers());
   document.getElementById('deedLoadBtn').addEventListener('click', () => loadDeed());
   document.getElementById('deedSort').addEventListener('change', () => loadDeed());
+  document.getElementById('deedReconOnly').addEventListener('change', () => loadDeed());
   document.getElementById('deedFilter').addEventListener('change', () => loadDeed());
   document.getElementById('custExportBtn').addEventListener('click', () => exportCustomersExcel());
   document.getElementById('custSort').addEventListener('change', renderCustomers);
@@ -202,12 +203,14 @@ function renderLedger(data) {
     </div>`;
   }
 
-  function payHistTable(payments, reconOnly) {
+  function payHistTable(payments, reconOnly, rowData) {
     if (!payments || !payments.length) return '<div style="color:var(--grey);font-size:.8rem;padding:8px 0;">No payments recorded</div>';
     // When reconOnly: grey out unreconciled rows, exclude from totals
     const visiblePaid = reconOnly
       ? payments.filter(p => p.reconciled).reduce((s,p)=>s+p.amount,0)
       : payments.reduce((s,p)=>s+p.amount,0);
+    const reconRR = payments.filter(p=>p.reconciled && p.against==='RR').reduce((s,p)=>s+p.amount,0);
+    const reconCR = payments.filter(p=>p.reconciled && p.against!=='RR').reduce((s,p)=>s+p.amount,0);
     return `<table class="sch-table" style="font-size:.78rem;">
       <thead><tr><th>Date</th><th>Manual Rcpt</th><th>Amount</th><th>Mode</th><th>Against</th><th>Ref</th><th>Recon</th><th>By</th></tr></thead>
       <tbody>
@@ -241,6 +244,7 @@ function renderLedger(data) {
   const _plotPayments = {};
   rows.forEach(r => { if (r.payments) _plotPayments[r.plotNo] = r.payments; });
   window._currentLedgerPlotPayments = _plotPayments;
+  window._currentLedgerRows = rows;
 
   let html = `
     <div class="ledger-header">
@@ -269,7 +273,7 @@ function renderLedger(data) {
         </div>
 
         <!-- Balance summary -->
-        <div class="lpc-bal-row">
+        <div class="lpc-bal-row" id="balCard-${r.plotNo}">
           <div class="lpc-bal-cell lpc-br">
             <div class="lpc-bal-label">BR</div>
             <div class="lpc-bal-total">₹${Utils.fmtNum(r.brAmt)}</div>
@@ -294,7 +298,7 @@ function renderLedger(data) {
         </div>
 
         <!-- Installment schedule — BR, RR, CR each with paid/due per part -->
-        <div class="lpc-schedule">
+        <div class="lpc-schedule" id="schedCard-${r.plotNo}">
           <div class="lpc-sch-title">Installment Schedule (Total · Paid · Due per part)</div>
           <div class="schedule-grid" style="grid-template-columns:repeat(3,1fr);">
             ${instTable(r.installments,'br')}
@@ -313,7 +317,7 @@ function renderLedger(data) {
               Show reconciled only
             </label>
           </div>
-          <div id="payHist-${r.plotNo}">${payHistTable(r.payments, false)}</div>
+          <div id="payHist-${r.plotNo}">${payHistTable(r.payments, false, r)}</div>
         </div>
       </div>`;
   });
@@ -1266,8 +1270,9 @@ async function loadDeed() {
   const btn    = document.getElementById('deedLoadBtn');
   const out    = document.getElementById('reportOutput');
   const filter = document.getElementById('deedFilter').value;
-  const sort   = document.getElementById('deedSort').value;
-  const search = document.getElementById('deedSearch').value.trim().toLowerCase();
+  const sort      = document.getElementById('deedSort').value;
+  const reconOnly = document.getElementById('deedReconOnly').checked;
+  const search    = document.getElementById('deedSearch').value.trim().toLowerCase();
   btn.disabled = true; btn.textContent = 'Loading…';
   out.innerHTML = '<div class="loading-state">Loading…</div>';
 
@@ -1278,7 +1283,7 @@ async function loadDeed() {
     const rows = search
       ? res.rows.filter(r => r.customerName.toLowerCase().includes(search))
       : res.rows;
-    renderDeed(rows, filter);
+    renderDeed(rows, filter, reconOnly);
   } catch(e) {
     out.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`;
   } finally {
@@ -1286,7 +1291,7 @@ async function loadDeed() {
   }
 }
 
-function renderDeed(rows, filter) {
+function renderDeed(rows, filter, reconOnly) {
   const out = document.getElementById('reportOutput');
   if (!rows.length) {
     out.innerHTML = '<div class="empty-state"><p>No records found for the selected filter.</p></div>';
@@ -1336,8 +1341,11 @@ function renderDeed(rows, filter) {
       <tbody>`;
 
   rows.forEach((r, idx) => {
-    const brPct     = r.brAmt > 0 ? Math.round(r.paidBR / r.brAmt * 100) : 0;
-    const rrI1Pct   = r.rrInst1 > 0 ? Math.round(r.paidRR / r.rrInst1 * 100) : 0;
+    const effectivePaidBR = reconOnly ? (r.paidBR_recon||0) : r.paidBR;
+    const effectivePaidRR = reconOnly ? (r.paidRR_recon||0) : r.paidRR;
+    const effectiveDiff   = r.brAmt - effectivePaidBR;
+    const brPct     = r.brAmt > 0 ? Math.round(effectivePaidBR / r.brAmt * 100) : 0;
+    const rrI1Pct   = r.rrInst1 > 0 ? Math.round(effectivePaidRR / r.rrInst1 * 100) : 0;
 
     // Agreement status chip
     const agChip = r.agDone
@@ -1388,11 +1396,12 @@ function renderDeed(rows, filter) {
         <div style="font-size:.68rem;color:var(--grey);">${brPct}% paid</div>
       </td>
       <td style="color:${brPct>=99?'var(--forest)':'var(--ink)'};">
-        <strong>₹${Utils.fmtNum(r.paidBR)}</strong>
+        <strong>₹${Utils.fmtNum(effectivePaidBR)}</strong>
+        ${reconOnly ? '<div style="font-size:.65rem;color:#1565c0;">recon only</div>' : ''}
         ${brPct>=100?'<div style="font-size:.68rem;color:var(--forest);">✅ Full</div>':brPct>=99?'<div style="font-size:.68rem;color:#f57f17;">≥99%</div>':''}
       </td>
       <td>${(() => {
-        const diff = r.brDiff;
+        const diff = reconOnly ? effectiveDiff : r.brDiff;
         if (diff > 0)  return '<span style="color:#e53935;font-weight:700;">−₹' + Utils.fmtNum(diff) + '</span><div style="font-size:.68rem;color:#e53935;">Due</div>';
         if (diff < 0)  return '<span style="color:#6a1b9a;font-weight:700;">+₹' + Utils.fmtNum(Math.abs(diff)) + '</span><div style="font-size:.68rem;color:#6a1b9a;">Excess</div>';
         return '<span style="color:var(--forest);font-weight:700;">✅ Settled</span>';
@@ -1515,8 +1524,101 @@ function applyReconFilter(checkbox) {
   const plotNo    = checkbox.dataset.plot;
   const reconOnly = checkbox.checked;
   const payments  = (window._currentLedgerPlotPayments || {})[plotNo] || [];
+  const rowData   = (window._currentLedgerRows || []).find(r => String(r.plotNo) === String(plotNo));
   const container = document.getElementById('payHist-' + plotNo);
   if (!container) return;
+
+  // Recompute paid amounts
+  const rrPaid = reconOnly
+    ? payments.filter(p=>p.reconciled && p.against==='RR').reduce((s,p)=>s+p.amount,0)
+    : payments.filter(p=>p.against==='RR').reduce((s,p)=>s+p.amount,0);
+  const crPaid = reconOnly
+    ? payments.filter(p=>p.reconciled && p.against!=='RR').reduce((s,p)=>s+p.amount,0)
+    : payments.filter(p=>p.against!=='RR').reduce((s,p)=>s+p.amount,0);
+  const brPaid = rrPaid + crPaid;
+
+  if (rowData) {
+    const brAmt = rowData.brAmt, rrAmt = rowData.rrAmt, crAmt = rowData.crAmt;
+    const brBal = brAmt - brPaid, rrBal = rrAmt - rrPaid, crBal = crAmt - crPaid;
+
+    // Update balance cards
+    const card = document.getElementById('balCard-' + plotNo);
+    if (card) {
+      const reconLabel = reconOnly ? ' <span style="font-size:.65rem;background:#e3f2fd;color:#1565c0;border-radius:4px;padding:1px 5px;">recon only</span>' : '';
+      card.innerHTML = `
+        <div class="lpc-bal-cell lpc-br">
+          <div class="lpc-bal-label">BR${reconLabel}</div>
+          <div class="lpc-bal-total">₹${Utils.fmtNum(brAmt)}</div>
+          <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(brPaid)}</div>
+          <div class="lpc-bal-due ${brBal>0?'due-red':brBal<0?'due-excess':'due-green'}">${Utils.fmtBal(brBal)}</div>
+          ${brBal<0?`<div style="font-size:.68rem;color:#6a1b9a;font-weight:700;">Excess ₹${Utils.fmtNum(Math.abs(brBal))}</div>`:''}
+        </div>
+        <div class="lpc-bal-cell lpc-rr">
+          <div class="lpc-bal-label">RR${reconLabel}</div>
+          <div class="lpc-bal-total">₹${Utils.fmtNum(rrAmt)}</div>
+          <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(rrPaid)}</div>
+          <div class="lpc-bal-due ${rrBal>0?'due-red':rrBal<0?'due-excess':'due-green'}">${Utils.fmtBal(rrBal)}</div>
+          ${rrBal<0?`<div style="font-size:.68rem;color:#6a1b9a;font-weight:700;">Excess ₹${Utils.fmtNum(Math.abs(rrBal))}</div>`:''}
+        </div>
+        <div class="lpc-bal-cell lpc-cr">
+          <div class="lpc-bal-label">CR${reconLabel}</div>
+          <div class="lpc-bal-total">₹${Utils.fmtNum(crAmt)}</div>
+          <div class="lpc-bal-sub">Paid ₹${Utils.fmtNum(crPaid)}</div>
+          <div class="lpc-bal-due ${crBal>0?'due-red':crBal<0?'due-excess':'due-green'}">${Utils.fmtBal(crBal)}</div>
+          ${crBal<0?`<div style="font-size:.68rem;color:#6a1b9a;font-weight:700;">Excess ₹${Utils.fmtNum(Math.abs(crBal))}</div>`:''}
+        </div>`;
+    }
+
+    // Update installment schedule
+    const schedCard = document.getElementById('schedCard-' + plotNo);
+    if (schedCard && rowData.installments) {
+      // Recalculate installment nets with new paid amounts
+      function calcNets(parts, paid) {
+        let rem = paid;
+        return parts.map(g => { const a = Math.min(rem, g); rem -= a; return { gross:g, paid:a, due:Math.max(0,g-a) }; });
+      }
+      const pctRR = rowData.installments.map(i=>i.rr.gross);
+      const pctCR = rowData.installments.map(i=>i.cr.gross);
+      const pctBR = rowData.installments.map(i=>i.br.gross);
+      const rrNets = calcNets(pctRR, rrPaid);
+      const crNets = calcNets(pctCR, crPaid);
+      const brNets = calcNets(pctBR, brPaid);
+      const newInst = rowData.installments.map((inst,i) => ({
+        ...inst,
+        rr: { gross:pctRR[i], paid:rrNets[i].paid, due:rrNets[i].due },
+        cr: { gross:pctCR[i], paid:crNets[i].paid, due:crNets[i].due },
+        br: { gross:pctBR[i], paid:brNets[i].paid, due:brNets[i].due },
+      }));
+      // Re-render installment tables — reuse the instTable closure isn't available here
+      // so we build inline
+      function miniInstTable(insts, cat, label, color) {
+        const catPaid = insts.reduce((s,i)=>s+i[cat].paid,0);
+        const catAmt  = insts.reduce((s,i)=>s+i[cat].gross,0);
+        const catExcess = catPaid - catAmt;
+        return `<div class="inst-mini-wrap">
+          <div class="inst-mini-title" style="background:${color}20;color:${color};">${label}</div>
+          ${insts.map((inst,i)=>`<div class="inst-mini-row ${inst[cat].due===0?'inst-paid':''}">
+            <span>Inst ${i+1}</span><span>${inst.dueDate}</span>
+            <span>₹${Utils.fmtNum(inst[cat].gross)}</span>
+            <span style="color:var(--forest);">₹${Utils.fmtNum(inst[cat].paid)}</span>
+            <span style="color:${inst[cat].due>0?'var(--red)':'var(--forest)'};">${inst[cat].due>0?'₹'+Utils.fmtNum(inst[cat].due):'✓'}</span>
+          </div>`).join('')}
+          ${catExcess>0?`<div class="inst-mini-row inst-excess-row">
+            <span colspan="2" style="font-weight:700;color:#6a1b9a;">⚠ Excess</span>
+            <span></span><span></span>
+            <span style="color:#6a1b9a;font-weight:700;">−₹${Utils.fmtNum(catExcess)}</span>
+          </div>`:''}
+        </div>`;
+      }
+      schedCard.innerHTML = `
+        <div class="lpc-sch-title">Installment Schedule${reconOnly?' <span style="font-size:.68rem;background:#e3f2fd;color:#1565c0;border-radius:4px;padding:1px 5px;">reconciled only</span>':''} (Total · Paid · Due per part)</div>
+        <div class="schedule-grid" style="grid-template-columns:repeat(3,1fr);">
+          ${miniInstTable(newInst,'br','BR','#283593')}
+          ${miniInstTable(newInst,'rr','RR','#1565c0')}
+          ${miniInstTable(newInst,'cr','CR','#880e4f')}
+        </div>`;
+    }
+  }
 
   // Inline payHistTable logic (simpler rebuild)
   if (!payments.length) { container.innerHTML = '<div style="color:var(--grey);font-size:.8rem;padding:8px 0;">No payments recorded</div>'; return; }

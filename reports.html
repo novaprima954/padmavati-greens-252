@@ -250,7 +250,15 @@
             <option value="br_desc">BR Amount ↓ High to Low</option>
             <option value="ag_asc">Agreement No. ↑ Low to High</option>
             <option value="ag_desc">Agreement No. ↓ High to Low</option>
+            <option value="br_pct_desc">BR Paid % ↓ High to Low</option>
+            <option value="br_pct_desc_recon">BR Paid % (Reconciled only) ↓ High to Low</option>
           </select>
+        </div>
+        <div class="filter-group" style="align-self:flex-end;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" id="deedReconOnly" style="accent-color:#2e7d32;width:14px;height:14px;">
+            <span>Reconciled amounts only</span>
+          </label>
         </div>
         <div class="filter-group">
           <label>Search by Name</label>
