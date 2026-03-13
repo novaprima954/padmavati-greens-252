@@ -51,6 +51,10 @@
       <div class="rc-name">Receipt Number Audit</div>
       <div class="rc-desc">Cash and Bank receipt series — all issued receipts, missing gaps, and cancelled/voided numbers</div>
     </div>
+    <div class="report-card" data-report="agaudit">
+      <div class="rc-icon">📝</div>
+      <div class="rc-name">Agreement Audit</div>
+    </div>
     <div class="report-card" data-report="deed">
       <div class="rc-icon">📜</div>
       <div class="rc-name">Sale Deed Eligible</div>
@@ -215,6 +219,13 @@
     </div>
 
     <!-- Report output -->
+    <!-- Agreement Audit controls -->
+    <div id="agauditControls" class="report-controls" style="display:none;">
+      <div class="rc-filter-row">
+        <button class="btn-report-search" id="agauditLoadBtn">Load Report</button>
+      </div>
+    </div>
+
     <!-- Sale Deed controls -->
     <div id="deedControls" class="report-controls" style="display:none;">
       <div class="rc-filter-row">
@@ -229,6 +240,22 @@
           </select>
         </div>
         <button class="btn-report-search" id="deedLoadBtn">Load Report</button>
+      </div>
+      <div class="rc-filter-row" style="margin-top:10px;">
+        <div class="filter-group">
+          <label>Sort By</label>
+          <select id="deedSort" class="select-filter">
+            <option value="default">Default</option>
+            <option value="br_asc">BR Amount ↑ Low to High</option>
+            <option value="br_desc">BR Amount ↓ High to Low</option>
+            <option value="ag_asc">Agreement No. ↑ Low to High</option>
+            <option value="ag_desc">Agreement No. ↓ High to Low</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Search by Name</label>
+          <input type="text" id="deedSearch" class="report-input" placeholder="Customer name…" style="max-width:220px;">
+        </div>
       </div>
     </div>
 

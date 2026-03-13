@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('ratecompLoadBtn').addEventListener('click', () => loadRateComp());
   document.getElementById('custLoadBtn').addEventListener('click', () => loadCustomers());
   document.getElementById('deedLoadBtn').addEventListener('click', () => loadDeed());
+  document.getElementById('deedSort').addEventListener('change', () => loadDeed());
   document.getElementById('deedFilter').addEventListener('change', () => loadDeed());
   document.getElementById('custExportBtn').addEventListener('click', () => exportCustomersExcel());
   document.getElementById('custSort').addEventListener('change', renderCustomers);
@@ -69,6 +70,7 @@ function openReport(report) {
   document.getElementById('ratecompControls').style.display  = 'none';
   document.getElementById('customersControls').style.display = 'none';
   document.getElementById('deedControls').style.display      = 'none';
+  document.getElementById('agauditControls').style.display   = 'none';
   document.getElementById('custExportBtn').style.display     = 'none';
 
   const titles = {
@@ -81,6 +83,7 @@ function openReport(report) {
     ratecomp:   ['Rate Comparison', 'Zone rate vs booked rate — discount, premium and revenue impact per plot'],
     customers:  ['Customer Summary', 'All active customers — payments received, total amount and outstanding due'],
     deed:       ['Sale Deed Eligible', 'Agreement and sale deed tracker — eligibility, status and action'],
+    agaudit:    ['Agreement Number Audit', 'All completed agreements sorted by agreement number — gaps highlighted'],
   };
   document.getElementById('reportViewTitle').textContent = titles[report][0];
   document.getElementById('reportViewSub').textContent   = titles[report][1];
@@ -111,6 +114,9 @@ function openReport(report) {
   } else if (report==='deed') {
     document.getElementById('deedControls').style.display = 'block';
     loadDeed();
+  } else if (report==='agaudit') {
+    document.getElementById('agauditControls').style.display = 'block';
+    loadAgAudit();
   }
 }
 
@@ -196,29 +202,45 @@ function renderLedger(data) {
     </div>`;
   }
 
-  function payHistTable(payments) {
+  function payHistTable(payments, reconOnly) {
     if (!payments || !payments.length) return '<div style="color:var(--grey);font-size:.8rem;padding:8px 0;">No payments recorded</div>';
+    // When reconOnly: grey out unreconciled rows, exclude from totals
+    const visiblePaid = reconOnly
+      ? payments.filter(p => p.reconciled).reduce((s,p)=>s+p.amount,0)
+      : payments.reduce((s,p)=>s+p.amount,0);
     return `<table class="sch-table" style="font-size:.78rem;">
-      <thead><tr><th>Date</th><th>Manual Rcpt</th><th>Amount</th><th>Mode</th><th>Against</th><th>Ref</th><th>Notes</th><th>By</th></tr></thead>
+      <thead><tr><th>Date</th><th>Manual Rcpt</th><th>Amount</th><th>Mode</th><th>Against</th><th>Ref</th><th>Recon</th><th>By</th></tr></thead>
       <tbody>
-        ${payments.map(p=>`<tr>
+        ${payments.map(p=>{
+          const isRecon = !!p.reconciled;
+          const grey    = reconOnly && !isRecon;
+          const rowStyle= grey ? 'opacity:.35;' : '';
+          const reconBadge = isRecon
+            ? '<span style="color:#2e7d32;font-size:.68rem;font-weight:700;">✅</span>'
+            : '<span style="color:#e53935;font-size:.68rem;">○</span>';
+          return `<tr style="${rowStyle}">
           <td>${p.date||'—'}</td>
           <td>${p.receipt||'—'}</td>
-          <td><strong>₹${Utils.fmtNum(p.amount)}</strong></td>
+          <td><strong style="${grey?'color:#aaa;':''}">₹${Utils.fmtNum(p.amount)}</strong></td>
           <td>${p.mode}</td>
           <td><span class="badge ${p.against==='CR'?'badge-booked':'badge-avail'}" style="font-size:.65rem;">${p.against}</span></td>
           <td style="font-size:.7rem;">${p.ref||'—'}</td>
-          <td style="font-size:.7rem;color:var(--grey);">${p.notes||''}</td>
+          <td style="text-align:center;">${reconBadge}</td>
           <td style="font-size:.7rem;">${p.by||'—'}</td>
-        </tr>`).join('')}
+        </tr>`;}).join('')}
         <tr style="background:var(--mist);font-weight:700;">
-          <td colspan="2">Total Paid</td>
-          <td>₹${Utils.fmtNum(payments.reduce((s,p)=>s+p.amount,0))}</td>
+          <td colspan="2">${reconOnly ? 'Reconciled Total' : 'Total Paid'}</td>
+          <td>₹${Utils.fmtNum(visiblePaid)}</td>
           <td colspan="5"></td>
         </tr>
       </tbody>
     </table>`;
   }
+
+  // Store payments per plot for toggle re-render
+  const _plotPayments = {};
+  rows.forEach(r => { if (r.payments) _plotPayments[r.plotNo] = r.payments; });
+  window._currentLedgerPlotPayments = _plotPayments;
 
   let html = `
     <div class="ledger-header">
@@ -283,8 +305,15 @@ function renderLedger(data) {
 
         <!-- Payment history -->
         <div class="lpc-schedule" style="border-top:1px solid var(--border);">
-          <div class="lpc-sch-title">Payment History (${r.payments?r.payments.length:0} entries)</div>
-          ${payHistTable(r.payments)}
+          <div class="lpc-sch-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Payment History (${r.payments?r.payments.length:0} entries)</span>
+            <label style="display:flex;align-items:center;gap:6px;font-size:.75rem;font-weight:500;cursor:pointer;">
+              <input type="checkbox" class="recon-toggle" data-plot="${r.plotNo}" onchange="applyReconFilter(this)"
+                style="accent-color:#2e7d32;width:14px;height:14px;">
+              Show reconciled only
+            </label>
+          </div>
+          <div id="payHist-${r.plotNo}">${payHistTable(r.payments, false)}</div>
         </div>
       </div>`;
   });
@@ -1237,13 +1266,19 @@ async function loadDeed() {
   const btn    = document.getElementById('deedLoadBtn');
   const out    = document.getElementById('reportOutput');
   const filter = document.getElementById('deedFilter').value;
+  const sort   = document.getElementById('deedSort').value;
+  const search = document.getElementById('deedSearch').value.trim().toLowerCase();
   btn.disabled = true; btn.textContent = 'Loading…';
   out.innerHTML = '<div class="loading-state">Loading…</div>';
 
   try {
-    const res = await API.get({ action: 'getReportDeedEligible', filter });
+    const res = await API.get({ action: 'getReportDeedEligible', filter, sort });
     if (res.error) throw new Error(res.error);
-    renderDeed(res.rows, filter);
+    // Client-side name search filter
+    const rows = search
+      ? res.rows.filter(r => r.customerName.toLowerCase().includes(search))
+      : res.rows;
+    renderDeed(rows, filter);
   } catch(e) {
     out.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`;
   } finally {
@@ -1473,4 +1508,158 @@ async function undoDeed(receiptNo, type, customerName, plotNo) {
   } catch(e) {
     Utils.toast(e.message, 'err');
   }
+}
+
+// ── RECONCILED TOGGLE ────────────────────────────
+function applyReconFilter(checkbox) {
+  const plotNo    = checkbox.dataset.plot;
+  const reconOnly = checkbox.checked;
+  const payments  = (window._currentLedgerPlotPayments || {})[plotNo] || [];
+  const container = document.getElementById('payHist-' + plotNo);
+  if (!container) return;
+
+  // Inline payHistTable logic (simpler rebuild)
+  if (!payments.length) { container.innerHTML = '<div style="color:var(--grey);font-size:.8rem;padding:8px 0;">No payments recorded</div>'; return; }
+
+  const visiblePaid = reconOnly
+    ? payments.filter(p => p.reconciled).reduce((s,p)=>s+p.amount,0)
+    : payments.reduce((s,p)=>s+p.amount,0);
+
+  let rows = '<tbody>';
+  payments.forEach(p => {
+    const isRecon = !!p.reconciled;
+    const grey    = reconOnly && !isRecon;
+    const reconBadge = isRecon
+      ? '<span style="color:#2e7d32;font-size:.68rem;font-weight:700;">✅</span>'
+      : '<span style="color:#e53935;font-size:.68rem;">○</span>';
+    rows += `<tr style="${grey ? 'opacity:.35;' : ''}">
+      <td>${p.date||'—'}</td>
+      <td>${p.receipt||'—'}</td>
+      <td><strong style="${grey?'color:#aaa;':''}">₹${Utils.fmtNum(p.amount)}</strong></td>
+      <td>${p.mode}</td>
+      <td><span class="badge ${p.against==='CR'?'badge-booked':'badge-avail'}" style="font-size:.65rem;">${p.against}</span></td>
+      <td style="font-size:.7rem;">${p.ref||'—'}</td>
+      <td style="text-align:center;">${reconBadge}</td>
+      <td style="font-size:.7rem;">${p.by||'—'}</td>
+    </tr>`;
+  });
+  rows += `<tr style="background:var(--mist);font-weight:700;">
+    <td colspan="2">${reconOnly ? 'Reconciled Total' : 'Total Paid'}</td>
+    <td>₹${Utils.fmtNum(visiblePaid)}</td>
+    <td colspan="5"></td>
+  </tr></tbody>`;
+
+  container.querySelector('tbody').outerHTML = rows;
+}
+
+// ── AGREEMENT NUMBER AUDIT ───────────────────────
+async function loadAgAudit() {
+  const btn = document.getElementById('agauditLoadBtn');
+  const out = document.getElementById('reportOutput');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  out.innerHTML = '<div class="loading-state">Loading…</div>';
+
+  try {
+    const res = await API.get({ action: 'getReportAgreementAudit' });
+    if (res.error) throw new Error(res.error);
+    renderAgAudit(res.rows, res.gaps);
+  } catch(e) {
+    out.innerHTML = `<div class="empty-state"><p>${e.message}</p></div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Load Report';
+  }
+}
+
+function renderAgAudit(rows, gaps) {
+  const out = document.getElementById('reportOutput');
+  if (!rows.length) {
+    out.innerHTML = '<div class="empty-state"><p>No agreements recorded yet.</p></div>';
+    return;
+  }
+
+  const totalAmt  = rows.reduce((s,r)=>s+r.brAmt,0);
+  const totalPaid = rows.reduce((s,r)=>s+r.paidBR,0);
+  const deedDone  = rows.filter(r=>r.sdDone).length;
+
+  let html = `
+    <div class="deed-summary-strip">
+      <div class="deed-sum-card"><span>Total Agreements</span><strong>${rows.length}</strong></div>
+      <div class="deed-sum-card" style="border-color:#e53935;"><span>Missing Numbers</span><strong style="color:#e53935;">${gaps.length}</strong></div>
+      <div class="deed-sum-card" style="border-color:#6a1b9a;"><span>Sale Deed Done</span><strong style="color:#6a1b9a;">${deedDone}</strong></div>
+      <div class="deed-sum-card"><span>BR Total</span><strong>₹${Utils.fmtNum(totalAmt)}</strong></div>
+      <div class="deed-sum-card" style="border-color:var(--forest);"><span>BR Paid</span><strong style="color:var(--forest);">₹${Utils.fmtNum(totalPaid)}</strong></div>
+    </div>`;
+
+  if (gaps.length) {
+    html += `<div style="background:#fff8e1;border:1.5px solid #ffcc02;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:.82rem;">
+      <strong>⚠ Missing Agreement Numbers:</strong> ${gaps.join(', ')}
+    </div>`;
+  }
+
+  // Build merged rows (actual rows + gap rows) sorted by agNumberInt
+  const allRows = [...rows.map(r=>({...r, isGap:false}))];
+  gaps.forEach(g => allRows.push({ agNumberInt: g, agNumber: String(g), isGap: true }));
+  allRows.sort((a,b) => a.agNumberInt - b.agNumberInt);
+
+  html += `<table class="data-table" id="agAuditTable">
+    <thead><tr>
+      <th>Ag. No.</th>
+      <th>Customer</th>
+      <th>Plot</th>
+      <th>Agreement Date</th>
+      <th>Booking Date</th>
+      <th>BR Amount</th>
+      <th>BR Paid</th>
+      <th>Difference</th>
+      <th>Sale Deed</th>
+    </tr></thead>
+    <tbody>`;
+
+  allRows.forEach(r => {
+    if (r.isGap) {
+      html += `<tr style="background:#fff8e1;">
+        <td><strong style="color:#e65100;">${r.agNumber}</strong></td>
+        <td colspan="8" style="color:#e65100;font-style:italic;font-size:.82rem;">⚠ Missing — No agreement found for this number</td>
+      </tr>`;
+      return;
+    }
+
+    const diff    = r.brDiff;
+    const diffCell = diff > 0
+      ? `<span style="color:#e53935;font-weight:700;">−₹${Utils.fmtNum(diff)}</span><div style="font-size:.68rem;color:#e53935;">Due</div>`
+      : diff < 0
+        ? `<span style="color:#6a1b9a;font-weight:700;">+₹${Utils.fmtNum(Math.abs(diff))}</span><div style="font-size:.68rem;color:#6a1b9a;">Excess</div>`
+        : `<span style="color:var(--forest);font-weight:700;">✅ Settled</span>`;
+
+    const sdCell = r.sdDone
+      ? `<div class="deed-chip deed-chip-done" style="border-color:#6a1b9a;background:#f3e5f5;">✅ Done<br><span>${r.sdNumber||'—'}</span><br><span>${r.sdDate||'—'}</span></div>`
+      : `<span style="color:var(--grey);font-size:.78rem;">Pending</span>`;
+
+    html += `<tr>
+      <td><strong style="color:#1565c0;">${r.agNumber}</strong></td>
+      <td><strong>${r.customerName}</strong><div style="font-size:.72rem;color:var(--grey);">${r.receiptNo}</div></td>
+      <td>Plot ${r.plotNo}</td>
+      <td style="font-size:.82rem;">${r.agDate||'—'}</td>
+      <td style="font-size:.82rem;">${r.bookingDate||'—'}</td>
+      <td>₹${Utils.fmtNum(r.brAmt)}</td>
+      <td style="color:var(--forest);font-weight:600;">₹${Utils.fmtNum(r.paidBR)}</td>
+      <td>${diffCell}</td>
+      <td>${sdCell}</td>
+    </tr>`;
+  });
+
+  // Footer totals
+  html += `<tr style="background:var(--mist);font-weight:700;">
+    <td colspan="5">Total (${rows.length} agreements)</td>
+    <td>₹${Utils.fmtNum(totalAmt)}</td>
+    <td>₹${Utils.fmtNum(totalPaid)}</td>
+    <td>${(() => {
+      const d = totalAmt - totalPaid;
+      return d > 0 ? '−₹'+Utils.fmtNum(d)+' Due' : d < 0 ? '+₹'+Utils.fmtNum(Math.abs(d))+' Excess' : '✅ Settled';
+    })()}</td>
+    <td></td>
+  </tr>`;
+
+  html += `</tbody></table>`;
+  out.innerHTML = html;
 }
