@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="css/style.css">
 <script>
   (function(){
-    try { var s=JSON.parse(localStorage.getItem('pg_session')); if(!s||!s.token){window.location.replace('login.html');} if(s.role!=='admin'){window.location.replace('index.html');} }
+    try { var s=JSON.parse(localStorage.getItem('pg_session')); if(!s||!s.token){window.location.replace('login.html');} if(s.role!=='admin'&&s.role!=='sales'){window.location.replace('index.html');} }
     catch(e){ window.location.replace('login.html'); }
   })();
 </script>
@@ -21,49 +21,49 @@
 
   <!-- Report selector cards -->
   <div class="report-cards" id="reportCards">
-    <div class="report-card" data-report="ledger">
+    <div class="report-card" data-report="ledger" data-roles="admin,sales">
       <div class="rc-icon">📒</div>
       <div class="rc-name">Customer Ledger</div>
       <div class="rc-desc">All plots owned by a customer — BR, RR, CR totals, paid, balance and installment schedule combined</div>
     </div>
-    <div class="report-card" data-report="dues">
+    <div class="report-card" data-report="dues" data-roles="admin">
       <div class="rc-icon">📅</div>
       <div class="rc-name">Installment Due</div>
       <div class="rc-desc">Customers with overdue or upcoming Part 1, 2 or 3 installments — filter by overdue / next 7–60 days</div>
     </div>
-    <div class="report-card" data-report="excess">
+    <div class="report-card" data-report="excess" data-roles="admin">
       <div class="rc-icon">⚖️</div>
       <div class="rc-name">Excess Payments</div>
       <div class="rc-desc">Customers who have paid more than the BR, RR or CR total — identify mismatches and adjustments needed</div>
     </div>
-    <div class="report-card" data-report="payments">
+    <div class="report-card" data-report="payments" data-roles="admin">
       <div class="rc-icon">🧾</div>
       <div class="rc-name">Payment Receipt Report</div>
       <div class="rc-desc">All payment receipts for a date range — amount, mode, against, customer, plot and inputter</div>
     </div>
-    <div class="report-card" data-report="referred">
+    <div class="report-card" data-report="referred" data-roles="admin">
       <div class="rc-icon">🤝</div>
       <div class="rc-name">Referred By Report</div>
       <div class="rc-desc">All bookings grouped by referral source — select one or more referrers to see customer details</div>
     </div>
-    <div class="report-card" data-report="receipts">
+    <div class="report-card" data-report="receipts" data-roles="admin,sales">
       <div class="rc-icon">🔢</div>
       <div class="rc-name">Receipt Number Audit</div>
       <div class="rc-desc">Cash and Bank receipt series — all issued receipts, missing gaps, and cancelled/voided numbers</div>
     </div>
-    <div class="report-card" data-report="agaudit">
+    <div class="report-card" data-report="agaudit" data-roles="admin,sales">
       <div class="rc-icon">📝</div>
       <div class="rc-name">Agreement Audit</div>
     </div>
-    <div class="report-card" data-report="deed">
+    <div class="report-card" data-report="deed" data-roles="admin,sales">
       <div class="rc-icon">📜</div>
       <div class="rc-name">Sale Deed Eligible</div>
     </div>
-    <div class="report-card" data-report="customers">
+    <div class="report-card" data-report="customers" data-roles="admin">
       <div class="rc-icon">👥</div>
       <div class="rc-name">Customer Summary</div>
     </div>
-    <div class="report-card" data-report="ratecomp">
+    <div class="report-card" data-report="ratecomp" data-roles="admin">
       <div class="rc-icon">📊</div>
       <div class="rc-name">Rate Comparison</div>
       <div class="rc-desc">Zone rate vs booked rate for each plot — discount/premium %, revenue impact, filter by zone, exec or % band</div>

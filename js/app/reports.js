@@ -8,6 +8,14 @@ let excessData = null;
 document.addEventListener('DOMContentLoaded', () => {
   Header.init('reports');
 
+  // Hide report cards not accessible to current role
+  const _sess = Auth.getSession();
+  const _role = _sess ? _sess.role : '';
+  document.querySelectorAll('.report-card[data-roles]').forEach(card => {
+    const allowed = (card.dataset.roles || '').split(',');
+    if (!allowed.includes(_role)) card.style.display = 'none';
+  });
+
   document.querySelectorAll('.report-card').forEach(card => {
     card.addEventListener('click', () => openReport(card.dataset.report));
   });
@@ -58,6 +66,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function openReport(report) {
+  const _sess2 = Auth.getSession();
+  const _role2 = _sess2 ? _sess2.role : '';
+  const card = document.querySelector(`.report-card[data-report="${report}"]`);
+  if (card) {
+    const allowed = (card.dataset.roles || 'admin').split(',');
+    if (!allowed.includes(_role2)) {
+      Utils.toast('Access restricted', 'err');
+      return;
+    }
+  }
   currentReport = report;
   document.getElementById('reportCards').style.display = 'none';
   document.getElementById('reportView').style.display  = 'block';
