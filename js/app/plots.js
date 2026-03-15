@@ -138,7 +138,7 @@ function openPlotModal(plotNo) {
 
   const statusCfg = {
     Available: ['var(--leaf-l)', '#2e7d32',    '✅ Available for booking'],
-    Booked:    ['var(--red-l)',  'var(--red)',  `✗ Booked by ${p['Booked By']||'N/A'} on ${p['Booking Date']||''}`],
+    Booked:    ['var(--red-l)',  'var(--red)',  `✗ Booked on ${p['Booking Date']||'N/A'}`],
     Reserved:  ['var(--amber-l)','var(--amber)','⏳ Currently reserved']
   };
   const [bg, fg, msg] = statusCfg[status] || statusCfg.Available;
@@ -176,15 +176,55 @@ async function fetchPlotCustomerInfo(receiptNo) {
       return;
     }
     const b = res.booking;
-    const name    = b['Customer Full Name'] || '—';
-    const phone   = b['Phone Number']       || '—';
-    const rcpt1   = b['Receipt Number 1']   || '—';
-    const bookedBy= b['Booked By Name']     || '—';
+    const name  = b['Customer Full Name'] || '—';
+    const phone = b['Phone Number']       || '—';
+    const rcpt1 = b['Receipt Number 1']   || '—';
+
+    // Fetch payments for this booking
+    let paymentsHtml = '<div style="font-size:.75rem;color:var(--grey);">Loading payments…</div>';
+    try {
+      const pyRes = await API.get({ action: 'getPayments', receiptNo: res.booking['Receipt No'] });
+      if (pyRes.success && pyRes.payments && pyRes.payments.length) {
+        const totalPaid = pyRes.payments.reduce((s,p) => s + (Number(p['Amount'])||0), 0);
+        paymentsHtml = `
+          <div style="font-size:.7rem;color:var(--grey);font-weight:600;letter-spacing:.04em;margin:12px 0 8px;">PAYMENT RECEIPTS</div>
+          <table style="width:100%;border-collapse:collapse;font-size:.78rem;">
+            <thead>
+              <tr style="background:#f1f8f2;">
+                <th style="padding:5px 8px;text-align:left;font-weight:600;color:var(--grey);border-bottom:1px solid var(--border);">Receipt No</th>
+                <th style="padding:5px 8px;text-align:left;font-weight:600;color:var(--grey);border-bottom:1px solid var(--border);">Date</th>
+                <th style="padding:5px 8px;text-align:right;font-weight:600;color:var(--grey);border-bottom:1px solid var(--border);">Amount</th>
+                <th style="padding:5px 8px;text-align:left;font-weight:600;color:var(--grey);border-bottom:1px solid var(--border);">Mode</th>
+                <th style="padding:5px 8px;text-align:left;font-weight:600;color:var(--grey);border-bottom:1px solid var(--border);">Against</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pyRes.payments.map((p,i) => `
+                <tr style="background:${i%2===0?'#fff':'#f9fdf9'};">
+                  <td style="padding:5px 8px;color:var(--forest);font-weight:600;">${p['Manual Receipt No']||'—'}</td>
+                  <td style="padding:5px 8px;color:var(--grey);">${p['Payment Date']||'—'}</td>
+                  <td style="padding:5px 8px;text-align:right;font-weight:700;">₹${Utils.fmtNum(Number(p['Amount']))}</td>
+                  <td style="padding:5px 8px;">${p['Mode']||'—'}</td>
+                  <td style="padding:5px 8px;"><span style="background:${p['Against']==='RR'?'#e3f2fd':'#fce4ec'};color:${p['Against']==='RR'?'#1565c0':'#880e4f'};padding:1px 7px;border-radius:10px;font-size:.7rem;font-weight:600;">${p['Against']||'—'}</span></td>
+                </tr>`).join('')}
+            </tbody>
+            <tfoot>
+              <tr style="background:#e8f5e9;font-weight:700;">
+                <td colspan="2" style="padding:6px 8px;">Total Paid</td>
+                <td style="padding:6px 8px;text-align:right;color:var(--forest);">₹${Utils.fmtNum(totalPaid)}</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>`;
+      } else {
+        paymentsHtml = '<div style="font-size:.78rem;color:var(--grey);padding:4px 0;">No payments recorded.</div>';
+      }
+    } catch(e) { paymentsHtml = ''; }
 
     el.innerHTML = `
       <div style="background:var(--mist);border-radius:10px;padding:14px;margin-top:4px;">
         <div style="font-size:.7rem;color:var(--grey);font-weight:600;letter-spacing:.04em;margin-bottom:10px;">CUSTOMER DETAILS</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
           <div>
             <div style="font-size:.7rem;color:var(--grey);margin-bottom:2px;">Customer Name</div>
             <div style="font-size:.9rem;font-weight:700;color:var(--ink);">${name}</div>
@@ -197,11 +237,8 @@ async function fetchPlotCustomerInfo(receiptNo) {
             <div style="font-size:.7rem;color:var(--grey);margin-bottom:2px;">Manual Receipt No</div>
             <div style="font-size:.9rem;font-weight:600;color:var(--forest);">${rcpt1}</div>
           </div>
-          <div>
-            <div style="font-size:.7rem;color:var(--grey);margin-bottom:2px;">Booked By</div>
-            <div style="font-size:.9rem;font-weight:500;">${bookedBy}</div>
-          </div>
         </div>
+        ${paymentsHtml}
       </div>`;
   } catch(e) {
     el.innerHTML = '';
