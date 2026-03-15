@@ -14,7 +14,7 @@ const Header = (() => {
     { label: '🔍 Status',      href: 'status.html',     page: 'status',     roles: ['admin','sales'] },
     { label: '📋 Bookings',    href: 'bookings.html',   page: 'bookings',   roles: ['admin','sales'] },
     { label: '💳 Add Payment', href: 'addpayment.html', page: 'addpayment', roles: ['admin'] },
-    { label: '📊 Reports',     href: 'reports.html',    page: 'reports',    roles: ['admin'] },
+    { label: '📊 Reports',     href: 'reports.html',    page: 'reports',    roles: ['admin','sales'] },
   ];
 
   function init(currentPage) {
